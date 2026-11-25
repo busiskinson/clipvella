@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/database.types";
 import { readLocalVideo, type LocalFileInfo } from "@/components/downloader/shared";
 import { invalidateData } from "@/stores/data-store";
-import { uploadPath, uploadThumbPath } from "@/lib/data/storage-paths";
+import { projectPrefix, safeFileName, uploadPath, uploadThumbPath } from "@/lib/data/storage-paths";
 
 export type AssetRow = Tables<"media_assets">;
 
@@ -116,4 +116,41 @@ export async function uploadVideo(file: File, opts: { onProgress?: (pct: number)
   }
   invalidateData();
   return { asset, thumbnail, info };
+}
+
+/** Music / voice-over for the editor: stored with the project in the media bucket. */
+export async function uploadAudio(file: File, projectId: string, opts: { onProgress?: (pct: number) => void } = {}): Promise<AssetRow> {
+  if (!file.type.startsWith("audio/")) throw new Error("That file isn't audio. Use MP3, WAV, M4A or OGG.");
+  if (file.size > MAX_UPLOAD_MB * 1024 * 1024) throw new Error(`This file is ${Math.ceil(file.size / 1024 / 1024)} MB. The upload limit is ${MAX_UPLOAD_MB} MB.`);
+  const supabase = createClient();
+  const { data: session } = await supabase.auth.getSession();
+  const token = session.session?.access_token;
+  const userId = session.session?.user.id;
+  if (!token || !userId) throw new Error("You're signed out. Log in again.");
+
+  const duration = await new Promise<number>((resolve) => {
+    const a = document.createElement("audio");
+    const url = URL.createObjectURL(file);
+    a.preload = "metadata";
+    a.onloadedmetadata = () => {
+      resolve(Number.isFinite(a.duration) ? a.duration : 0);
+      URL.revokeObjectURL(url);
+    };
+    a.onerror = () => resolve(0);
+    a.src = url;
+  });
+  const assetId = crypto.randomUUID();
+  const path = `${projectPrefix(userId, projectId)}audio/${assetId}-${safeFileName(file.name)}`;
+  await putObject("media", path, file, file.type, token, opts.onProgress);
+  const { data, error } = await supabase
+    .from("media_assets")
+    .insert({ id: assetId, kind: "audio", bucket: "media", path, file_name: file.name, mime: file.type, size_bytes: file.size, duration_s: duration || null, status: "ready" })
+    .select()
+    .single();
+  if (error) {
+    await supabase.storage.from("media").remove([path]);
+    throw error;
+  }
+  invalidateData();
+  return data;
 }

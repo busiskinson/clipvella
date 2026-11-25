@@ -130,10 +130,11 @@ export async function createProject(input: {
   return data;
 }
 
-export async function updateProject(id: string, patch: Partial<Omit<ProjectRow, "id" | "owner_id" | "created_at">>) {
+/** `silent` skips the global refetch (used by debounced autosaves). */
+export async function updateProject(id: string, patch: Partial<Omit<ProjectRow, "id" | "owner_id" | "created_at">>, opts: { silent?: boolean } = {}) {
   const { error } = await createClient().from("projects").update(patch).eq("id", id);
   if (error) throw error;
-  invalidateData();
+  if (!opts.silent) invalidateData();
 }
 
 export const renameProject = (id: string, name: string) => updateProject(id, { name });

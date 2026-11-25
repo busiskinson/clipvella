@@ -95,7 +95,7 @@ export function CaptionStudio() {
     const handle = setTimeout(async () => {
       setSave("saving");
       try {
-        await updateProject(current.id, { captions: captions as unknown as Json, caption_style: style as unknown as Json });
+        await updateProject(current.id, { captions: captions as unknown as Json, caption_style: style as unknown as Json }, { silent: true });
         setSave("saved");
       } catch {
         setSave("error");

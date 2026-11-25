@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { Download, PanelLeft, Redo2, SlidersHorizontal, Undo2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Check, Clapperboard, Download, Loader2, PanelLeft, Plus, Redo2, SlidersHorizontal, Undo2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { DemoBadge } from "@/components/common/page";
+import { GlassCard } from "@/components/common/page";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useProjects } from "@/lib/data/hooks";
+import { loadEditorProject, saveTimeline, toSnapshot } from "@/lib/data/timeline";
+import { useCaptionStore } from "@/stores/caption-store";
+import { useUIStore } from "@/stores/ui-store";
+import type { Caption, CaptionStyle } from "@/lib/types";
 import { useEditorStore } from "@/stores/editor-store";
 import { AssetsPanel } from "./assets-panel";
 import { PreviewStage } from "./preview-stage";
@@ -30,9 +38,96 @@ function HistoryButton({ label, shortcut, onClick, disabled, children }: { label
   );
 }
 
+/** Shown when the editor is opened without a project. */
+function ProjectChooser() {
+  const router = useRouter();
+  const { data, loading } = useProjects();
+  const setNewProject = useUIStore((s) => s.setNewProject);
+  const projects = (data ?? []).filter((p) => p.sourceAssetId || p.kind === "edit");
+  return (
+    <div className="grid flex-1 place-items-center p-4">
+      <GlassCard className="w-full max-w-md p-6 text-center">
+        <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-violet/15 text-lavender ring-1 ring-violet/25">
+          <Clapperboard aria-hidden className="size-6" />
+        </span>
+        <h1 className="text-xl font-semibold">Open a project to edit</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Your edits save to the project automatically.</p>
+        <div className="mt-5 grid gap-3 text-left">
+          <Select onValueChange={(id) => router.replace(`/editor?project=${id}`)} disabled={loading || projects.length === 0}>
+            <SelectTrigger aria-label="Project" className="w-full">
+              <SelectValue placeholder={loading ? "Loading projects…" : projects.length ? "Choose a project" : "No projects with video yet"} />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setNewProject(true)}>
+            <Plus aria-hidden /> New project
+          </Button>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
 export function EditorWorkspace() {
+  const projectId = useSearchParams().get("project");
+  return projectId ? <EditorForProject projectId={projectId} /> : <ProjectChooser />;
+}
+
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+function EditorForProject({ projectId }: { projectId: string }) {
   usePlaybackClock();
   useEditorShortcuts();
+  const loadedId = useEditorStore((s) => s.projectId);
+  const ready = loadedId === projectId;
+  const [save, setSave] = useState<SaveState>("idle");
+  const [linkOnly, setLinkOnly] = useState(false);
+
+  // Load the project (timeline, media with fresh signed URLs, captions).
+  useEffect(() => {
+    let alive = true;
+    loadEditorProject(projectId)
+      .then((p) => {
+        if (!alive) return;
+        useCaptionStore.getState().loadProject((p.captions as unknown as Caption[]) ?? [], (p.captionStyle as unknown as Partial<CaptionStyle>) ?? null);
+        useEditorStore.getState().loadProject(p);
+        setLinkOnly(p.linkOnly);
+      })
+      .catch((e) => toast.error("Couldn't open that project", { description: e instanceof Error ? e.message : undefined }));
+    return () => {
+      alive = false;
+    };
+  }, [projectId]);
+
+  // Debounced autosave of timeline + name.
+  useEffect(() => {
+    if (!ready) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsub = useEditorStore.subscribe((s, prev) => {
+      if (s.projectId !== projectId) return;
+      if (s.clips === prev.clips && s.tracks === prev.tracks && s.media === prev.media && s.aspect === prev.aspect && s.projectName === prev.projectName) return;
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        setSave("saving");
+        try {
+          await saveTimeline(projectId, toSnapshot(s), s.projectName.trim() || undefined);
+          setSave("saved");
+        } catch {
+          setSave("error");
+        }
+      }, 1000);
+    });
+    return () => {
+      clearTimeout(timer);
+      unsub();
+    };
+  }, [ready, projectId]);
 
   const projectName = useEditorStore((s) => s.projectName);
   const setProjectName = useEditorStore((s) => s.setProjectName);
@@ -59,7 +154,24 @@ export function EditorWorkspace() {
           onChange={(e) => setProjectName(e.target.value)}
           className="h-9 min-w-0 flex-1 rounded-lg bg-transparent px-2 font-heading text-[15px] font-medium transition-colors hover:bg-white/[0.04] focus:bg-white/[0.06] sm:max-w-xs"
         />
-        <DemoBadge className="hidden md:inline-flex" title="Preview playback and timeline editing run in the browser. Rendering needs the video processing backend." label="Frontend preview" />
+        <span className="hidden items-center gap-1.5 text-xs text-muted-foreground md:flex" aria-live="polite">
+          {!ready ? (
+            <>
+              <Loader2 aria-hidden className="size-3 animate-spin" /> Loading…
+            </>
+          ) : save === "saving" ? (
+            <>
+              <Loader2 aria-hidden className="size-3 animate-spin" /> Saving…
+            </>
+          ) : save === "saved" ? (
+            <>
+              <Check aria-hidden className="size-3 text-success" /> Saved
+            </>
+          ) : save === "error" ? (
+            <span className="text-destructive">Not saved</span>
+          ) : null}
+        </span>
+        {linkOnly && <span className="hidden text-xs text-warning lg:inline">Linked video · upload your own copy to edit it</span>}
         <div className="ml-auto flex items-center gap-1">
           <HistoryButton label="Undo" shortcut="Ctrl Z" onClick={undo} disabled={!canUndo}>
             <Undo2 aria-hidden />
@@ -70,7 +182,7 @@ export function EditorWorkspace() {
           <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open properties panel" onClick={() => setSheet("props")}>
             <SlidersHorizontal aria-hidden />
           </Button>
-          <Button onClick={() => setExportOpen(true)} className="ml-1">
+          <Button onClick={() => setExportOpen(true)} className="ml-1" disabled={!ready}>
             <Download aria-hidden /> Export
           </Button>
         </div>

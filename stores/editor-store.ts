@@ -18,26 +18,11 @@ export const DEFAULT_PROPS: ClipProps = {
   effect: "none",
 };
 
-const INITIAL_TRACKS: Track[] = [
+export const INITIAL_TRACKS: Track[] = [
   { id: "t-overlay", kind: "overlay", name: "Text & overlays", muted: false, locked: false, hidden: false },
   { id: "t-video", kind: "video", name: "Main video", muted: false, locked: false, hidden: false },
   { id: "t-caption", kind: "caption", name: "Captions", muted: false, locked: true, hidden: false },
   { id: "t-audio", kind: "audio", name: "Music", muted: false, locked: false, hidden: false },
-];
-
-const SAMPLE_MEDIA: MediaItem[] = [
-  { id: "m-intro", name: "intro_hook.mp4", kind: "video", duration: 8, hue: 0 },
-  { id: "m-interview", name: "interview_a-cam.mp4", kind: "video", duration: 42, hue: 3 },
-  { id: "m-broll", name: "broll_city.mp4", kind: "video", duration: 15, hue: 1 },
-  { id: "m-music", name: "midnight_notebook.wav", kind: "audio", duration: 150, hue: 2 },
-];
-
-const INITIAL_CLIPS: TimelineClip[] = [
-  { id: "k1", trackId: "t-video", name: "intro_hook.mp4", start: 0, duration: 6, sourceIn: 0, mediaId: "m-intro", hue: 0, props: { ...DEFAULT_PROPS } },
-  { id: "k2", trackId: "t-video", name: "interview_a-cam.mp4", start: 6, duration: 12, sourceIn: 4, mediaId: "m-interview", hue: 3, props: { ...DEFAULT_PROPS } },
-  { id: "k3", trackId: "t-video", name: "broll_city.mp4", start: 18, duration: 8, sourceIn: 2, mediaId: "m-broll", hue: 1, props: { ...DEFAULT_PROPS, saturation: 12 } },
-  { id: "k4", trackId: "t-overlay", name: "Title: The one habit", start: 1, duration: 4, sourceIn: 0, hue: 5, props: { ...DEFAULT_PROPS, positionY: -30 } },
-  { id: "k5", trackId: "t-audio", name: "midnight_notebook.wav", start: 0, duration: 26, sourceIn: 0, mediaId: "m-music", hue: 2, props: { ...DEFAULT_PROPS, volume: 60 } },
 ];
 
 interface Snapshot {
@@ -85,8 +70,9 @@ interface EditorState extends Snapshot {
   duplicateSelected: () => void;
   toggleTrack: (id: string, key: "muted" | "locked" | "hidden") => void;
   setProjectName: (name: string) => void;
-  /** Start a fresh timeline from an imported video (Video Downloader / My Projects). */
-  openImport: (input: { projectName: string; aspect: AspectRatio; media: MediaItem }) => void;
+  projectId: string | null;
+  /** Replace the whole editor state with a project loaded from Supabase. */
+  loadProject: (input: { projectId: string; name: string; aspect: AspectRatio; tracks: Track[]; clips: TimelineClip[]; media: MediaItem[] }) => void;
 }
 
 export const MIN_ZOOM = 12;
@@ -104,16 +90,31 @@ export const useEditorStore = create<EditorState>()((set, get) => {
   const isLocked = (trackId: string) => get().tracks.find((t) => t.id === trackId)?.locked ?? false;
 
   return {
-    clips: INITIAL_CLIPS,
+    clips: [],
     tracks: INITIAL_TRACKS,
-    media: SAMPLE_MEDIA,
-    playhead: 3.2,
+    media: [],
+    playhead: 0,
     playing: false,
     zoom: 48,
-    selectedClipId: "k2",
+    selectedClipId: null,
     past: [],
     future: [],
-    projectName: "Product launch teaser",
+    projectName: "Untitled",
+    projectId: null,
+    loadProject: ({ projectId, name, aspect, tracks, clips, media }) =>
+      set({
+        projectId,
+        projectName: name,
+        aspect,
+        tracks: tracks.length ? tracks : INITIAL_TRACKS,
+        clips,
+        media,
+        playhead: 0,
+        playing: false,
+        selectedClipId: clips[0]?.id ?? null,
+        past: [],
+        future: [],
+      }),
     aspect: "9:16",
     setAspect: (aspect) => set({ aspect }),
 
@@ -253,33 +254,6 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     toggleTrack: (id, key) =>
       commit((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, [key]: !t[key] } : t)) })),
     setProjectName: (projectName) => set({ projectName }),
-    openImport: ({ projectName, aspect, media }) => {
-      // Remote links have no file yet, so their length is unknown; use a 10s placeholder block.
-      const length = media.duration > 0 ? media.duration : 10;
-      const clip: TimelineClip = {
-        id: uid("k"),
-        trackId: "t-video",
-        name: media.name,
-        start: 0,
-        duration: length,
-        sourceIn: 0,
-        mediaId: media.id,
-        hue: media.hue,
-        props: { ...DEFAULT_PROPS },
-      };
-      set((s) => ({
-        projectName,
-        aspect,
-        media: [media, ...s.media.filter((m) => m.id !== media.id)],
-        tracks: INITIAL_TRACKS,
-        clips: [clip],
-        playhead: 0,
-        playing: false,
-        selectedClipId: clip.id,
-        past: [],
-        future: [],
-      }));
-    },
   };
 });
 

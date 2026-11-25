@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, AudioLines, Captions, Film, Plus, Type, Upload, X } from "lucide-react";
 import { toast } from "sonner";
@@ -10,48 +10,61 @@ import { SceneThumb } from "@/components/common/scene-thumb";
 import { useEditorStore } from "@/stores/editor-store";
 import { useCaptionStore } from "@/stores/caption-store";
 import { CAPTION_TEMPLATES } from "@/lib/sample-data";
-import { formatDuration, formatTime, uid } from "@/lib/format";
+import { formatDuration, formatTime } from "@/lib/format";
+import { uploadAudio, uploadVideo } from "@/lib/upload";
+import { assetToMedia } from "@/lib/data/timeline";
+import { getSignedUrl } from "@/lib/data/projects";
 import { cn } from "@/lib/utils";
 import { EFFECTS } from "./clip-visuals";
 
-function readDuration(url: string, kind: "video" | "audio"): Promise<number> {
-  return new Promise((resolve) => {
-    const el = document.createElement(kind);
-    el.preload = "metadata";
-    el.onloadedmetadata = () => resolve(Number.isFinite(el.duration) ? el.duration : 10);
-    el.onerror = () => resolve(10);
-    el.src = url;
-  });
+/** Uploads files to Supabase Storage and adds them to the media bin with a signed URL. */
+function useStoredImport() {
+  const addMedia = useEditorStore((s) => s.addMedia);
+  const projectId = useEditorStore((s) => s.projectId);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const importFiles = async (files: FileList | null, only?: "audio") => {
+    if (!files || !projectId) return;
+    for (const file of Array.from(files)) {
+      const isAudio = file.type.startsWith("audio/");
+      if (only === "audio" && !isAudio) {
+        toast.error(`${file.name} is not an audio file`);
+        continue;
+      }
+      if (!isAudio && !file.type.startsWith("video/")) {
+        toast.error(`${file.name} is not a video or audio file`);
+        continue;
+      }
+      try {
+        setBusy(`Uploading ${file.name}…`);
+        const asset = isAudio ? await uploadAudio(file, projectId, { onProgress: (p) => setBusy(`Uploading ${file.name} · ${p}%`) }) : (await uploadVideo(file, { onProgress: (p) => setBusy(`Uploading ${file.name} · ${p}%`) })).asset;
+        addMedia(assetToMedia(asset, await getSignedUrl(asset.bucket, asset.path, 6 * 3600)));
+        toast.success(`Uploaded ${file.name}`);
+      } catch (e) {
+        toast.error(`Couldn't upload ${file.name}`, { description: e instanceof Error ? e.message : undefined });
+      } finally {
+        setBusy(null);
+      }
+    }
+  };
+  return { importFiles, busy };
 }
 
 function MediaTab() {
   const media = useEditorStore((s) => s.media);
-  const addMedia = useEditorStore((s) => s.addMedia);
   const removeMedia = useEditorStore((s) => s.removeMedia);
   const addClip = useEditorStore((s) => s.addClipFromMedia);
   const input = useRef<HTMLInputElement>(null);
-
-  const onFiles = async (files: FileList | null) => {
-    if (!files) return;
-    for (const file of Array.from(files)) {
-      const kind = file.type.startsWith("audio/") ? "audio" : file.type.startsWith("video/") ? "video" : null;
-      if (!kind) {
-        toast.error(`${file.name} is not a video or audio file`);
-        continue;
-      }
-      const url = URL.createObjectURL(file);
-      const duration = await readDuration(url, kind);
-      addMedia({ id: uid("m"), name: file.name, kind, duration, url, hue: Math.floor(Math.random() * 6) });
-      toast.success(`Imported ${file.name}`, { description: "Plays locally in the preview. Nothing is uploaded." });
-    }
-  };
+  const { importFiles, busy } = useStoredImport();
 
   return (
     <div className="grid gap-3">
-      <Button variant="glass" className="w-full" onClick={() => input.current?.click()}>
-        <Upload aria-hidden /> Import media
+      <Button variant="glass" className="w-full" onClick={() => input.current?.click()} disabled={!!busy}>
+        <Upload aria-hidden /> {busy ? "Uploading…" : "Upload media"}
       </Button>
-      <input ref={input} type="file" accept="video/*,audio/*" multiple className="sr-only" aria-label="Import media files" onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={input} type="file" accept="video/*,audio/*" multiple className="sr-only" aria-label="Upload media files" onChange={(e) => { void importFiles(e.target.files); e.target.value = ""; }} />
+      {busy && <p className="text-xs text-muted-foreground" aria-live="polite">{busy}</p>}
+      {media.length === 0 && !busy && <p className="rounded-lg border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">Your uploads and AI clips appear here.</p>}
       <ul className="grid grid-cols-2 gap-2">
         {media.map((m) => (
           <li key={m.id} className="group relative overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.02]">
@@ -149,30 +162,17 @@ function CaptionsTab() {
 function AudioTab() {
   const media = useEditorStore((s) => s.media);
   const audio = media.filter((m) => m.kind === "audio");
-  const addMedia = useEditorStore((s) => s.addMedia);
   const addClip = useEditorStore((s) => s.addClipFromMedia);
   const input = useRef<HTMLInputElement>(null);
-
-  const onFiles = async (files: FileList | null) => {
-    if (!files) return;
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("audio/")) {
-        toast.error(`${file.name} is not an audio file`);
-        continue;
-      }
-      const url = URL.createObjectURL(file);
-      const duration = await readDuration(url, "audio");
-      addMedia({ id: uid("m"), name: file.name, kind: "audio", duration, url, hue: 2 });
-      toast.success(`Imported ${file.name}`, { description: "Plays locally. Nothing is uploaded." });
-    }
-  };
+  const { importFiles, busy } = useStoredImport();
 
   return (
     <div className="grid gap-3">
-      <Button variant="glass" className="w-full" onClick={() => input.current?.click()}>
-        <Upload aria-hidden /> Import audio
+      <Button variant="glass" className="w-full" onClick={() => input.current?.click()} disabled={!!busy}>
+        <Upload aria-hidden /> {busy ? "Uploading…" : "Upload audio"}
       </Button>
-      <input ref={input} type="file" accept="audio/*" multiple className="sr-only" aria-label="Import audio files" onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} />
+      <input ref={input} type="file" accept="audio/*" multiple className="sr-only" aria-label="Upload audio files" onChange={(e) => { void importFiles(e.target.files, "audio"); e.target.value = ""; }} />
+      {busy && <p className="text-xs text-muted-foreground" aria-live="polite">{busy}</p>}
       {audio.length === 0 ? (
         <p className="rounded-lg border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">No audio yet. Import a music or voice-over file.</p>
       ) : (

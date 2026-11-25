@@ -89,6 +89,8 @@ export interface MediaItem {
   thumbnailUrl?: string;
   /** true when the file has not been downloaded (needs the media service) */
   remote?: boolean;
+  /** media_assets id when the file lives in Supabase Storage (persisted in the timeline) */
+  assetId?: string;
 }
 
 /* ---------- Captions ---------- */
