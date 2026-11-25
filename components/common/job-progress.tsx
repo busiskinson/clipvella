@@ -25,6 +25,7 @@ export function JobProgress({ job, onRetry, className }: { job: JobRow | null; o
 
   const active = job.status === "queued" || job.status === "running";
   const waiting = job.status === "queued" && !worker.online;
+  const stalled = job.status === "running" && !worker.online;
 
   return (
     <div className={cn("grid gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4", className)} aria-live="polite">
@@ -63,6 +64,12 @@ export function JobProgress({ job, onRetry, className }: { job: JobRow | null; o
           The worker on your PC isn&apos;t running (last seen {lastSeenLabel(worker.lastSeen)}). Start it with{" "}
           <code className="rounded bg-black/30 px-1 py-0.5">uv run python -m clipforge_worker</code> in the <code>worker</code> folder. The job
           will start automatically.
+        </p>
+      )}
+      {stalled && (
+        <p className="text-xs text-warning">
+          The worker hasn&apos;t reported for a while (last seen {lastSeenLabel(worker.lastSeen)}). If it stopped, restart it; the job is retried
+          automatically after 10 minutes.
         </p>
       )}
       {job.status === "failed" && job.error && (

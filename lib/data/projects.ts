@@ -5,6 +5,7 @@ import type { Json, Tables } from "@/lib/database.types";
 import type { AspectRatio, Project, ProjectKind, ProjectSource, SupportedPlatform } from "@/lib/types";
 import { invalidateData } from "@/stores/data-store";
 import { projectPrefix } from "./storage-paths";
+import { unreferencedAssets, type AssetRefs } from "./references";
 
 export type ProjectRow = Tables<"projects">;
 export type AssetRow = Tables<"media_assets">;
@@ -165,48 +166,72 @@ export async function duplicateProject(id: string): Promise<ProjectRow> {
  * Deletes a project and everything generated for it (clips, renders, thumbnails, captions under
  * {uid}/projects/{id}/), then its source upload if no other project or clip still uses it.
  */
+/** Asset ids (among `ids`) that something other than project `exceptProject` still uses. */
+async function referenceSets(ids: string[], exceptProject: string): Promise<AssetRefs> {
+  if (!ids.length) return { projectSources: [], clipOutputs: [], timelineAssets: [] };
+  const supabase = createClient();
+  const [sources, outputs, thumbs, timelines] = await Promise.all([
+    supabase.from("projects").select("source_asset_id").neq("id", exceptProject).in("source_asset_id", ids),
+    supabase.from("clips").select("output_asset_id").neq("project_id", exceptProject).in("output_asset_id", ids),
+    supabase.from("clips").select("thumbnail_asset_id").neq("project_id", exceptProject).in("thumbnail_asset_id", ids),
+    supabase.from("projects").select("timeline").neq("id", exceptProject).not("timeline", "is", null),
+  ]);
+  for (const r of [sources, outputs, thumbs, timelines]) if (r.error) throw r.error;
+  const timelineAssets = (timelines.data ?? []).flatMap((p) => ((p.timeline as { media?: { assetId?: string }[] } | null)?.media ?? []).map((m) => m.assetId ?? ""));
+  return {
+    projectSources: (sources.data ?? []).map((r) => r.source_asset_id ?? ""),
+    clipOutputs: [...(outputs.data ?? []).map((r) => r.output_asset_id ?? ""), ...(thumbs.data ?? []).map((r) => r.thumbnail_asset_id ?? "")],
+    timelineAssets,
+  };
+}
+
+async function removeAssets(assets: { id: string; bucket: string; path: string }[]) {
+  const supabase = createClient();
+  for (const bucket of ["uploads", ...BUCKETS]) {
+    const paths = assets.filter((a) => a.bucket === bucket).map((a) => a.path);
+    if (!paths.length) continue;
+    const { error } = await supabase.storage.from(bucket).remove(paths);
+    if (error) throw new Error(`Couldn't delete files: ${error.message}`);
+  }
+  if (assets.length) {
+    const { error } = await supabase.from("media_assets").delete().in("id", assets.map((a) => a.id));
+    if (error) throw error;
+  }
+}
+
+/**
+ * Deletes a project and everything generated for it (clips, renders, thumbnails, captions under
+ * {uid}/projects/{id}/), then its source upload — keeping any file another project, clip or
+ * saved timeline still uses.
+ */
 export async function deleteProject(id: string): Promise<void> {
   const supabase = createClient();
   const owner = await uid();
   const project = await getProjectRow(id);
   const prefix = projectPrefix(owner, id);
 
-  const { data: all, error: gErr } = await supabase.from("media_assets").select("id, bucket, path").like("path", `${prefix}%`);
+  const { data: generated, error: gErr } = await supabase.from("media_assets").select("id, bucket, path").like("path", `${prefix}%`);
   if (gErr) throw gErr;
-  // Keep files another project still uses as its source (e.g. an edit project opened from a clip).
-  const ids = (all ?? []).map((a) => a.id);
-  const { data: inUse } = ids.length
-    ? await supabase.from("projects").select("source_asset_id").neq("id", id).in("source_asset_id", ids)
-    : { data: [] as { source_asset_id: string | null }[] };
-  const keep = new Set((inUse ?? []).map((p) => p.source_asset_id));
-  const generated = (all ?? []).filter((a) => !keep.has(a.id));
+  const candidates = [...(generated ?? [])];
+  if (project.source_asset_id) {
+    const { data: src } = await supabase.from("media_assets").select("id, bucket, path, kind").eq("id", project.source_asset_id).maybeSingle();
+    // only original uploads are removed with their project; a clip used as a source belongs to its clip
+    if (src?.kind === "upload") {
+      candidates.push(src);
+      const { data: poster } = await supabase.from("media_assets").select("id, bucket, path").eq("path", `${owner}/uploads/${src.id}.jpg`).maybeSingle();
+      if (poster) candidates.push(poster);
+    }
+  }
+  const refs = await referenceSets(candidates.map((a) => a.id), id);
+  const keep = new Set(candidates.map((a) => a.id).filter((x) => !unreferencedAssets([x], refs).length));
+  // an upload's poster frame stays when its upload stays
+  if (project.source_asset_id && keep.has(project.source_asset_id)) {
+    for (const a of candidates) if (a.path === `${owner}/uploads/${project.source_asset_id}.jpg`) keep.add(a.id);
+  }
 
   // Row first: cascades clips + jobs and releases the restrict on the source upload.
   const { error: pErr } = await supabase.from("projects").delete().eq("id", id);
   if (pErr) throw pErr;
-
-  for (const bucket of BUCKETS) {
-    const paths = (generated ?? []).filter((a) => a.bucket === bucket).map((a) => a.path);
-    if (paths.length) await supabase.storage.from(bucket).remove(paths);
-  }
-  if (generated?.length) await supabase.from("media_assets").delete().in("id", generated.map((a) => a.id));
-
-  if (project.source_asset_id) await deleteUploadIfUnused(project.source_asset_id);
+  await removeAssets(candidates.filter((a) => !keep.has(a.id)));
   invalidateData();
-}
-
-async function deleteUploadIfUnused(assetId: string) {
-  const supabase = createClient();
-  const [{ count: p }, { count: c }] = await Promise.all([
-    supabase.from("projects").select("id", { count: "exact", head: true }).eq("source_asset_id", assetId),
-    supabase.from("clips").select("id", { count: "exact", head: true }).eq("source_asset_id", assetId),
-  ]);
-  if ((p ?? 0) > 0 || (c ?? 0) > 0) return;
-  const { data: asset } = await supabase.from("media_assets").select("*").eq("id", assetId).maybeSingle();
-  if (!asset) return;
-  await supabase.storage.from(asset.bucket).remove([asset.path]);
-  const owner = asset.owner_id;
-  await supabase.storage.from("thumbnails").remove([`${owner}/uploads/${asset.id}.jpg`]);
-  await supabase.from("media_assets").delete().in("path", [`${owner}/uploads/${asset.id}.jpg`]);
-  await supabase.from("media_assets").delete().eq("id", assetId);
 }

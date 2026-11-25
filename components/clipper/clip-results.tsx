@@ -78,9 +78,10 @@ function ClipCard({ clip, aspect, subtitles, captionStyle }: { clip: ClipView; a
     setSaving(true);
     try {
       const timesChanged = s !== clip.start_s || e !== clip.end_s;
-      await updateClip(clip.id, { title: title.trim() || clip.title, start_s: s, end_s: e });
+      if (title !== clip.title) await updateClip(clip.id, { title: title.trim() || clip.title });
       if (timesChanged) {
-        const res = await createJob("render_clip", { clip_id: clip.id, subtitles, caption_style: captionStyle });
+        // new times are applied by the worker only if the re-render succeeds
+        const res = await createJob("render_clip", { clip_id: clip.id, start_s: s, end_s: e, subtitles, caption_style: captionStyle });
         if (!res.ok) throw new Error(res.message);
         setJobId(res.job.id);
       } else toast.success("Clip saved");

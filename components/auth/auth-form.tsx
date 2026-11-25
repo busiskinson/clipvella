@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { safeNext } from "@/lib/safe-next";
 
 type Mode = "login" | "signup";
 
@@ -20,11 +21,6 @@ export function authMessage(mode: Mode, raw: string): string {
   if (m.includes("email not confirmed")) return "Confirm your email first, or turn off email confirmation in Supabase.";
   if (m.includes("rate limit")) return "Too many attempts. Wait a minute and try again.";
   return mode === "login" ? `Couldn't log in: ${raw}` : `Couldn't create the account: ${raw}`;
-}
-
-/** Only allow same-site relative redirects after login. */
-function safeNext(next: string | null) {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
 }
 
 export function AuthForm({ mode }: { mode: Mode }) {

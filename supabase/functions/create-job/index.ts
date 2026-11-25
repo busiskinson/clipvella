@@ -44,9 +44,18 @@ function validate(type: JobType, input: Record<string, unknown>): { ok: true; in
         },
       };
     }
-    case "render_clip":
+    case "render_clip": {
       if (!isUuid(input.clip_id)) return bad("clip_id is required.");
-      return { ok: true, input: { clip_id: input.clip_id, subtitles: Boolean(input.subtitles), caption_style: input.caption_style ?? null } };
+      const out: Record<string, unknown> = { clip_id: input.clip_id, subtitles: Boolean(input.subtitles), caption_style: input.caption_style ?? null };
+      if (input.start_s !== undefined || input.end_s !== undefined) {
+        const s = Number(input.start_s);
+        const e = Number(input.end_s);
+        if (!Number.isFinite(s) || !Number.isFinite(e) || s < 0 || e - s < 1) return bad("start_s and end_s must be valid times at least 1 second apart.");
+        out.start_s = s;
+        out.end_s = e;
+      }
+      return { ok: true, input: out };
+    }
     case "transcribe":
       if (!isUuid(input.project_id) || !isUuid(input.asset_id)) return bad("project_id and asset_id are required.");
       if (!lang(input.language)) return bad("language must be a language code or auto.");
@@ -128,7 +137,10 @@ async function handle(req: Request): Promise<Response> {
     .select()
     .single();
   if (error) return json({ ok: false, code: "server", message: error.message } satisfies Fail, 500);
-  if (projectId && body.type !== "render_export") await db.from("projects").update({ status: "processing" }).eq("id", projectId);
+  // only long analyses mark the project busy; the worker settles it back on success, failure or cancel
+  if (projectId && (body.type === "analyze_and_clip" || body.type === "transcribe")) {
+    await db.from("projects").update({ status: "processing" }).eq("id", projectId);
+  }
   return json({ ok: true, job });
 }
 
