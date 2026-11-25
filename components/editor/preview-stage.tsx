@@ -94,7 +94,7 @@ export function PreviewStage() {
               </span>
             ) : (
               <SceneThumb hue={videoClip.hue} className="absolute inset-0">
-                <span className="absolute top-3 left-3 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white/80 backdrop-blur">Sample clip</span>
+                <span className="absolute top-3 left-3 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white/80 backdrop-blur">Media unavailable</span>
               </SceneThumb>
             )}
             {videoClip.props.effect === "glow" && (

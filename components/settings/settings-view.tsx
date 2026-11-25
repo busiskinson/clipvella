@@ -12,6 +12,7 @@ import { CardHeader, GlassCard } from "@/components/common/page";
 import { AspectPicker } from "@/components/common/aspect-picker";
 import { useSettingsStore, type Settings } from "@/stores/settings-store";
 import { LANGUAGES } from "@/components/clipper/clip-settings";
+import { useWorkerStatus } from "@/lib/data/jobs";
 
 function ToggleRow({ id, label, description, checked, onChange }: { id: string; label: string; description: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -64,12 +65,44 @@ function TextSetting({ id, label, value, onSave }: { id: string; label: string; 
   );
 }
 
-const INTEGRATIONS = [
-  { name: "Highlight detection model", purpose: "AI Video Clipper" },
-  { name: "Speech-to-text", purpose: "Subtitles and Caption Studio" },
-  { name: "Media import service", purpose: "Video Downloader (authorized downloads only)" },
-  { name: "Video rendering service", purpose: "Exports and clip downloads" },
-];
+function ServiceRow({ name, purpose, ok, okLabel = "Ready", offLabel }: { name: string; purpose: string; ok: boolean; okLabel?: string; offLabel: string }) {
+  return (
+    <li className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{name}</p>
+        <p className="text-xs text-muted-foreground">{purpose}</p>
+      </div>
+      <span
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${ok ? "border-success/30 text-success" : "border-white/10 text-muted-foreground"}`}
+      >
+        <span aria-hidden className={`size-1.5 rounded-full ${ok ? "bg-success" : "bg-muted-foreground"}`} /> {ok ? okLabel : offLabel}
+      </span>
+    </li>
+  );
+}
+
+function AiServices() {
+  const w = useWorkerStatus();
+  const caps = w.capabilities;
+  const seen = w.lastSeen ? new Date(w.lastSeen).toLocaleString() : "never";
+  return (
+    <GlassCard className="p-5 sm:p-6">
+      <CardHeader icon={Plug} title="AI services" description={`Reported by the worker on your PC · last seen ${seen}`} />
+      <ul className="mt-4 grid gap-2">
+        <ServiceRow name="Worker" purpose="Runs transcription, highlight detection and rendering" ok={w.online} okLabel="Online" offLabel="Offline" />
+        <ServiceRow name="Groq Whisper" purpose="Speech-to-text and automatic captions" ok={!!caps?.keys?.groq} okLabel="Key set" offLabel="Key not set" />
+        <ServiceRow name="Gemini" purpose="Highlight detection, titles, descriptions, hashtags" ok={!!caps?.keys?.gemini} okLabel="Key set" offLabel="Key not set" />
+        <ServiceRow name="FFmpeg" purpose="Cutting, resizing, captions burn-in, exports" ok={!!caps?.ffmpeg} offLabel="Not found" />
+        <ServiceRow name="Silero VAD · PySceneDetect" purpose="Speech and scene detection" ok={!!caps?.vad && !!caps?.scenedetect} offLabel="Not found" />
+      </ul>
+      {!w.lastSeen && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Start the worker with <code className="rounded bg-black/30 px-1">uv run python -m clipforge_worker</code> in the <code>worker</code> folder.
+        </p>
+      )}
+    </GlassCard>
+  );
+}
 
 export function SettingsView() {
   const s = useSettingsStore();
@@ -167,22 +200,7 @@ export function SettingsView() {
         </div>
       </GlassCard>
 
-      <GlassCard className="p-5 sm:p-6">
-        <CardHeader icon={Plug} title="AI services" description="Backend connections required for real processing." />
-        <ul className="mt-4 grid gap-2">
-          {INTEGRATIONS.map((i) => (
-            <li key={i.name} className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-              <div>
-                <p className="text-sm font-medium">{i.name}</p>
-                <p className="text-xs text-muted-foreground">{i.purpose}</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-xs text-muted-foreground">
-                <span aria-hidden className="size-1.5 rounded-full bg-muted-foreground" /> Not connected
-              </span>
-            </li>
-          ))}
-        </ul>
-      </GlassCard>
+      <AiServices />
 
       <GlassCard className="p-5 sm:p-6">
         <CardHeader icon={Database} title="Your data" description="Projects, media, download history and settings are stored in your Supabase project." />
