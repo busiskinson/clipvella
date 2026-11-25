@@ -2,7 +2,7 @@
 
 import type { AspectRatio, SupportedPlatform } from "@/lib/types";
 import { PLATFORM_LABEL } from "@/lib/platforms";
-import type { HistoryStatus } from "@/stores/downloader-store";
+import type { HistoryStatus } from "@/lib/data/downloads";
 import { cn } from "@/lib/utils";
 
 export const PLATFORM_DOT: Record<SupportedPlatform, string> = {

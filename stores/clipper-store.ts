@@ -3,7 +3,6 @@
 import { create } from "zustand";
 import type { AspectRatio, GeneratedClip } from "@/lib/types";
 import { seeded } from "@/lib/format";
-import { useMediaRegistry } from "./media-registry";
 
 export type ClipLength = "auto" | "15-30" | "30-60" | "60-90";
 export type TrackingMode = "auto" | "active-speaker" | "multi";
@@ -142,9 +141,7 @@ export const useClipperStore = create<ClipperState>()((set, get) => ({
 
   setSource: (source) => {
     const prev = get().source;
-    // Files imported through the Video Downloader are shared with My Projects / the editor — keep them alive.
-    const shared = Object.values(useMediaRegistry.getState().files).some((f) => f.url === prev?.url);
-    if (prev?.kind === "file" && prev.url !== source?.url && !shared) URL.revokeObjectURL(prev.url);
+    if (prev?.kind === "file" && prev.url.startsWith("blob:") && prev.url !== source?.url) URL.revokeObjectURL(prev.url);
     get().cancel();
     set({ source, phase: "idle", clips: [], heatmap: [], progress: 0, stepIndex: 0 });
   },

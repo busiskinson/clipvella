@@ -10,6 +10,7 @@ import type { ResolvedMedia } from "@/lib/platforms";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { formatBytes, formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { MAX_UPLOAD_MB } from "@/lib/upload";
 import { PlatformChip, type LocalFileInfo } from "./shared";
 
 export type Result =
@@ -38,8 +39,10 @@ export function ResultCard({
   onOpenClipper,
   onDownload,
   download,
+  uploadPct = null,
 }: {
   result: Result;
+  uploadPct?: number | null;
   onImport: () => void;
   onOpenEditor: () => void;
   onOpenClipper: () => void;
@@ -201,8 +204,9 @@ export function ResultCard({
                 </Link>
               </Button>
             ) : (
-              <Button onClick={onImport}>
-                <FolderPlus aria-hidden /> Import to projects
+              <Button onClick={onImport} disabled={uploadPct !== null}>
+                {uploadPct !== null ? <Loader2 aria-hidden className="animate-spin" /> : <FolderPlus aria-hidden />}
+                {uploadPct !== null ? `Uploading ${uploadPct}%` : info ? "Upload & import" : "Import to projects"}
               </Button>
             )}
             {media && (
@@ -244,7 +248,7 @@ export function ResultCard({
             </p>
           )}
           {info && !imported && (
-            <p className="text-xs text-muted-foreground">The file stays on your device. Imported local files are kept for this browser session.</p>
+            <p className="text-xs text-muted-foreground">Importing uploads the file to your private Supabase storage (up to {MAX_UPLOAD_MB} MB).</p>
           )}
         </div>
       </div>

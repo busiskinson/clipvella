@@ -5,8 +5,11 @@ import { Clapperboard, FileVideo, History, RotateCw, Trash2, X } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CardHeader, GlassCard } from "@/components/common/page";
-import { useDownloaderStore, type HistoryEntry } from "@/stores/downloader-store";
-import { useProjectStore } from "@/stores/project-store";
+import { clearDownloads, listDownloads, removeDownload, type DownloadRow, type HistoryStatus } from "@/lib/data/downloads";
+import { useQuery } from "@/lib/data/use-query";
+import { useProjects } from "@/lib/data/hooks";
+import type { SupportedPlatform } from "@/lib/types";
+import { toast } from "sonner";
 import { useOpenProject } from "@/components/common/use-open-project";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { formatDate } from "@/lib/format";
@@ -18,14 +21,17 @@ function timeOf(iso: string) {
 }
 
 export function HistoryPanel({ onReanalyze }: { onReanalyze: (url: string) => void }) {
-  const history = useDownloaderStore((s) => s.history);
-  const remove = useDownloaderStore((s) => s.remove);
-  const clear = useDownloaderStore((s) => s.clear);
-  const projects = useProjectStore((s) => s.projects);
+  const { data } = useQuery(listDownloads);
+  const history = data ?? [];
+  const { data: projectList } = useProjects();
+  const projects = projectList ?? [];
+  const fail = (e: unknown) => toast.error("Couldn't update history", { description: e instanceof Error ? e.message : undefined });
+  const remove = (id: string) => removeDownload(id).catch(fail);
+  const clear = () => clearDownloads().catch(fail);
   const { openInEditor } = useOpenProject();
   const [confirm, setConfirm] = useState(false);
 
-  const projectFor = (h: HistoryEntry) => (h.projectId ? projects.find((p) => p.id === h.projectId) : undefined);
+  const projectFor = (h: DownloadRow) => (h.project_id ? projects.find((p) => p.id === h.project_id) : undefined);
 
   return (
     <GlassCard className="p-4 sm:p-5">
@@ -54,9 +60,9 @@ export function HistoryPanel({ onReanalyze }: { onReanalyze: (url: string) => vo
             return (
               <li key={h.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-transparent p-2 transition-colors duration-200 hover:border-white/[0.06] hover:bg-white/[0.03]">
                 <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-black/40">
-                  {h.thumbnail ? (
+                  {h.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element -- thumbnails come from platform CDNs or local data URLs
-                    <img src={h.thumbnail} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />
+                    <img src={h.thumbnail_url} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />
                   ) : (
                     <FileVideo aria-hidden className="size-5 text-muted-foreground" />
                   )}
@@ -66,11 +72,11 @@ export function HistoryPanel({ onReanalyze }: { onReanalyze: (url: string) => vo
                     {h.title}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    <StatusBadge status={h.status} />
-                    <span>{h.platform ? PLATFORM_LABEL[h.platform] : "Local file"}</span>
+                    <StatusBadge status={h.status as HistoryStatus} />
+                    <span>{h.platform ? PLATFORM_LABEL[h.platform as SupportedPlatform] : "Local file"}</span>
                     <span aria-hidden>·</span>
-                    <time dateTime={h.createdAt}>
-                      {formatDate(h.createdAt)} {timeOf(h.createdAt)}
+                    <time dateTime={h.created_at}>
+                      {formatDate(h.created_at)} {timeOf(h.created_at)}
                     </time>
                   </div>
                 </div>
