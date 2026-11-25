@@ -2,10 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/shell/providers";
-import { SidebarNav } from "@/components/shell/sidebar-nav";
-import { Topbar } from "@/components/shell/topbar";
-import { QuickSearch } from "@/components/shell/quick-search";
-import { NewProjectDialog } from "@/components/common/new-project-dialog";
 
 // Typography from UI UX Pro Max "Tech Startup" pairing: Space Grotesk headings + DM Sans body.
 const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], display: "swap" });
@@ -31,19 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <Providers>
-          <div className="flex min-h-dvh">
-            <SidebarNav />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <Topbar />
-              <main id="main" className="flex min-w-0 flex-1 flex-col">
-                {children}
-              </main>
-            </div>
-          </div>
-          <QuickSearch />
-          <NewProjectDialog />
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

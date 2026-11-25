@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, Plus, Search, Settings, FolderKanban, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { signOut } from "@/lib/data/profile";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,6 +29,9 @@ export function Topbar() {
   const mobileOpen = useUIStore((s) => s.mobileNavOpen);
   const setMobile = useUIStore((s) => s.setMobileNav);
   const displayName = useSettingsStore((s) => s.displayName);
+  const email = useSettingsStore((s) => s.email);
+  const workspace = useSettingsStore((s) => s.workspace);
+  const router = useRouter();
   const initials = displayName
     .split(/\s+/)
     .map((w) => w[0])
@@ -76,7 +80,7 @@ export function Topbar() {
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="font-normal">
             <p className="text-sm font-medium text-foreground">{displayName}</p>
-            <p className="text-xs text-muted-foreground">Demo workspace</p>
+            <p className="truncate text-xs text-muted-foreground">{email || workspace}</p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
@@ -90,7 +94,17 @@ export function Topbar() {
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => toast.info("Sign-out needs authentication, which is not connected yet.")}>
+          <DropdownMenuItem
+            onSelect={async () => {
+              try {
+                await signOut();
+                router.replace("/login");
+                router.refresh();
+              } catch {
+                toast.error("Couldn't sign out. Try again.");
+              }
+            }}
+          >
             <LogOut aria-hidden /> Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
