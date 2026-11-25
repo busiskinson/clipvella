@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PageContainer, PageHeader } from "@/components/common/page";
 import { CaptionStudio } from "@/components/captions/caption-studio";
 
@@ -9,9 +10,11 @@ export default function CaptionsPage() {
     <PageContainer className="max-w-[1600px]">
       <PageHeader
         title="Caption Studio"
-        description="Edit subtitle text and timing, then style karaoke highlights, fonts and animations with a live preview. Captions are shared with the Video Editor."
+        description="Generate subtitles from speech with Whisper, edit text and timing, and style karaoke highlights, fonts and animations with a live preview. Changes save to your project."
       />
-      <CaptionStudio />
+      <Suspense fallback={<div className="glass h-64 animate-pulse rounded-2xl" />}>
+        <CaptionStudio />
+      </Suspense>
     </PageContainer>
   );
 }

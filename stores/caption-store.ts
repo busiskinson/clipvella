@@ -20,6 +20,8 @@ interface CaptionState {
   splitCaption: (id: string) => void;
   shiftAll: (delta: number) => void;
   replaceAll: (captions: Caption[]) => void;
+  /** Replace everything with a project's saved captions and style. */
+  loadProject: (captions: Caption[], style: Partial<CaptionStyle> | null) => void;
 }
 
 const round = (n: number) => Math.round(n * 10) / 10;
@@ -93,6 +95,13 @@ export const useCaptionStore = create<CaptionState>()((set) => ({
       }),
     })),
   replaceAll: (captions) => set({ captions, selectedId: captions[0]?.id ?? null }),
+  loadProject: (captions, style) =>
+    set({
+      captions,
+      selectedId: captions[0]?.id ?? null,
+      style: { ...DEFAULT_CAPTION_STYLE, ...(style ?? {}) },
+      templateId: style ? null : "karaoke-violet",
+    }),
 }));
 
 /** Split a caption into timed words, weighted by character length. */

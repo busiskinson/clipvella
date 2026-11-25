@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronsLeft, ChevronsRight, Plus, Scissors, Sparkles, Trash2, Wand2 } from "lucide-react";
-import { toast } from "sonner";
+import { ChevronsLeft, ChevronsRight, Plus, Scissors, Trash2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CardHeader, DemoBadge, GlassCard } from "@/components/common/page";
+import { CardHeader, GlassCard } from "@/components/common/page";
 import { useCaptionStore } from "@/stores/caption-store";
-import { SAMPLE_CAPTIONS } from "@/lib/sample-data";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +28,7 @@ function TimeInput({ label, value, onChange }: { label: string; value: number; o
   );
 }
 
-export function CaptionList({ time, setTime }: { time: number; setTime: (t: number) => void }) {
+export function CaptionList({ time, setTime, generator }: { time: number; setTime: (t: number) => void; generator?: React.ReactNode }) {
   const captions = useCaptionStore((s) => s.captions);
   const selectedId = useCaptionStore((s) => s.selectedId);
   const select = useCaptionStore((s) => s.select);
@@ -40,19 +37,6 @@ export function CaptionList({ time, setTime }: { time: number; setTime: (t: numb
   const remove = useCaptionStore((s) => s.removeCaption);
   const split = useCaptionStore((s) => s.splitCaption);
   const shiftAll = useCaptionStore((s) => s.shiftAll);
-  const replaceAll = useCaptionStore((s) => s.replaceAll);
-  const [generating, setGenerating] = useState(false);
-
-  const autoGenerate = () => {
-    setGenerating(true);
-    // Simulated transcription — swap for the speech-to-text API.
-    setTimeout(() => {
-      replaceAll(SAMPLE_CAPTIONS.map((c) => ({ ...c })));
-      setGenerating(false);
-      toast.success("Sample transcript loaded", { description: "Real transcription will replace this once the API is connected." });
-    }, 1400);
-  };
-
   return (
     <GlassCard className="p-5">
       <CardHeader
@@ -81,14 +65,13 @@ export function CaptionList({ time, setTime }: { time: number; setTime: (t: numb
         }
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-        <Sparkles aria-hidden className="size-4 text-lavender" />
-        <span className="text-sm">Auto-generate from speech</span>
-        <DemoBadge label="Demo" />
-        <Button size="sm" variant="glass" className="ml-auto" onClick={autoGenerate} disabled={generating}>
-          {generating ? "Transcribing…" : "Generate"}
-        </Button>
-      </div>
+      {generator && <div className="mt-4">{generator}</div>}
+
+      {captions.length === 0 && (
+        <p className="mt-4 rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+          No subtitles yet. Generate them from the video&apos;s speech or add lines by hand.
+        </p>
+      )}
 
       <ol className="mt-4 grid gap-2">
         {captions.map((c, i) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pause, Play, Repeat, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -19,16 +19,54 @@ const FRAME_CLASS: Record<Frame, string> = {
   "16:9": "aspect-video w-full max-w-[560px]",
 };
 
-export function CaptionPreview({ time, setTime }: { time: number; setTime: (t: number) => void }) {
+export function CaptionPreview({
+  time,
+  setTime,
+  videoUrl = null,
+  defaultFrame = "9:16",
+}: {
+  time: number;
+  setTime: (t: number) => void;
+  videoUrl?: string | null;
+  defaultFrame?: Frame;
+}) {
   const captions = useCaptionStore((s) => s.captions);
   const style = useCaptionStore((s) => s.style);
-  const [playing, setPlaying] = useState(true);
+  const video = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(!videoUrl);
   const [loop, setLoop] = useState(true);
-  const [frame, setFrame] = useState<Frame>("9:16");
-  const end = captions.reduce((n, c) => Math.max(n, c.end), 0) + 0.6;
+  const [frame, setFrame] = useState<Frame>(defaultFrame);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const end = videoUrl && videoDuration ? videoDuration : captions.reduce((n, c) => Math.max(n, c.end), 0) + 0.6;
 
+  // Real video: the element is the clock.
   useEffect(() => {
-    if (!playing) return;
+    const v = video.current;
+    if (!videoUrl || !v) return;
+    v.loop = loop;
+    if (!playing) {
+      v.pause();
+      return;
+    }
+    void v.play().catch(() => setPlaying(false));
+    let raf = 0;
+    const tick = () => {
+      setTime(v.currentTime);
+      if (v.ended && !loop) return setPlaying(false);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [videoUrl, playing, loop, setTime]);
+
+  const seek = (t: number) => {
+    setTime(t);
+    if (video.current) video.current.currentTime = t;
+  };
+
+  // No video yet: a simple clock so styles can still be previewed.
+  useEffect(() => {
+    if (videoUrl || !playing) return;
     let raf = 0;
     let last = performance.now();
     let t = time;
@@ -66,7 +104,20 @@ export function CaptionPreview({ time, setTime }: { time: number; setTime: (t: n
         ]}
       />
       <div className={cn("@container relative overflow-hidden rounded-2xl bg-black shadow-[0_30px_80px_-30px_rgb(0_0_0/0.9)] ring-1 ring-white/10", FRAME_CLASS[frame], captionFontVariables)}>
-        <SceneThumb hue={3} className="absolute inset-0" />
+        {videoUrl ? (
+          <video
+            ref={video}
+            src={videoUrl}
+            playsInline
+            preload="metadata"
+            onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration)}
+            className="absolute inset-0 size-full object-cover"
+          >
+            <track kind="captions" />
+          </video>
+        ) : (
+          <SceneThumb hue={3} className="absolute inset-0" />
+        )}
         <CaptionOverlay captions={captions} style={style} time={time} />
       </div>
 
@@ -83,11 +134,11 @@ export function CaptionPreview({ time, setTime }: { time: number; setTime: (t: n
           step={0.05}
           onValueChange={([v]) => {
             setPlaying(false);
-            setTime(v);
+            seek(v);
           }}
         />
         <span className="w-12 text-right font-mono text-xs tabular-nums text-muted-foreground">{formatTime(time)}</span>
-        <Button variant="ghost" size="icon-sm" aria-label="Restart preview" onClick={() => setTime(0)}>
+        <Button variant="ghost" size="icon-sm" aria-label="Restart preview" onClick={() => seek(0)}>
           <RotateCcw aria-hidden />
         </Button>
         <Button
