@@ -84,7 +84,8 @@ export interface WorkerState {
 /** Most recently seen worker, kept fresh with Realtime and a 15 s re-check of the timeout. */
 export function useWorkerStatus(): WorkerState {
   const [row, setRow] = useState<Tables<"worker_status"> | null>(null);
-  const [now, setNow] = useState(() => Date.now());
+  // null until mounted: reading the clock during prerender is not allowed
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -100,16 +101,18 @@ export function useWorkerStatus(): WorkerState {
       .channel("worker-status")
       .on("postgres_changes", { event: "*", schema: "public", table: "worker_status" }, (payload) => setRow(payload.new as Tables<"worker_status">))
       .subscribe();
+    const first = setTimeout(() => setNow(Date.now()), 0);
     const tick = setInterval(() => setNow(Date.now()), 15_000);
     return () => {
       alive = false;
+      clearTimeout(first);
       clearInterval(tick);
       void supabase.removeChannel(channel);
     };
   }, []);
 
   return {
-    online: isWorkerOnline(row?.last_seen, now),
+    online: now !== null && isWorkerOnline(row?.last_seen, now),
     lastSeen: row?.last_seen ?? null,
     capabilities: (row?.capabilities as WorkerState["capabilities"] & Json) ?? null,
   };
