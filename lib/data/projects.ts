@@ -170,8 +170,15 @@ export async function deleteProject(id: string): Promise<void> {
   const project = await getProjectRow(id);
   const prefix = projectPrefix(owner, id);
 
-  const { data: generated, error: gErr } = await supabase.from("media_assets").select("id, bucket, path").like("path", `${prefix}%`);
+  const { data: all, error: gErr } = await supabase.from("media_assets").select("id, bucket, path").like("path", `${prefix}%`);
   if (gErr) throw gErr;
+  // Keep files another project still uses as its source (e.g. an edit project opened from a clip).
+  const ids = (all ?? []).map((a) => a.id);
+  const { data: inUse } = ids.length
+    ? await supabase.from("projects").select("source_asset_id").neq("id", id).in("source_asset_id", ids)
+    : { data: [] as { source_asset_id: string | null }[] };
+  const keep = new Set((inUse ?? []).map((p) => p.source_asset_id));
+  const generated = (all ?? []).filter((a) => !keep.has(a.id));
 
   // Row first: cascades clips + jobs and releases the restrict on the source upload.
   const { error: pErr } = await supabase.from("projects").delete().eq("id", id);

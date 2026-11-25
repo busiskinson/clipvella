@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { Captions, ScanFace, SlidersHorizontal, Sparkles, Square } from "lucide-react";
+import { Captions, ScanFace, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -9,9 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CardHeader, GlassCard } from "@/components/common/page";
 import { Segmented, SliderField } from "@/components/common/fields";
 import { AspectPicker } from "@/components/common/aspect-picker";
-import { useClipperStore, type ClipLength, type TrackingMode } from "@/stores/clipper-store";
+import { useClipperStore, type ClipLength } from "@/stores/clipper-store";
 import { CAPTION_TEMPLATES } from "@/lib/sample-data";
-import { useSettingsStore } from "@/stores/settings-store";
 
 export const LANGUAGES = [
   { value: "en", label: "English" },
@@ -37,19 +35,20 @@ function SettingRow({ id, title, description, checked, onChange }: { id: string;
   );
 }
 
-export function ClipSettings() {
+export function ClipSettings({
+  onGenerate,
+  busy,
+  canGenerate,
+  hasClips,
+  disabledReason,
+}: {
+  onGenerate: () => void;
+  busy: boolean;
+  canGenerate: boolean;
+  hasClips: boolean;
+  disabledReason: string;
+}) {
   const s = useClipperStore();
-  const busy = s.phase === "analyzing";
-  const defaultAspect = useSettingsStore((x) => x.defaultAspect);
-  const defaultClipLength = useSettingsStore((x) => x.defaultClipLength);
-  const autoCaptions = useSettingsStore((x) => x.autoCaptions);
-  const captionLanguage = useSettingsStore((x) => x.captionLanguage);
-  const setClipper = s.set;
-
-  // Apply workspace defaults from Settings (also after they rehydrate from storage)
-  useEffect(() => {
-    setClipper({ aspect: defaultAspect, clipLength: defaultClipLength, autoSubtitles: autoCaptions, subtitleLanguage: captionLanguage });
-  }, [defaultAspect, defaultClipLength, autoCaptions, captionLanguage, setClipper]);
 
   return (
     <GlassCard className="flex flex-col gap-6 p-5 sm:p-6">
@@ -78,40 +77,12 @@ export function ClipSettings() {
 
       <SliderField label="Number of clips" value={s.clipCount} min={3} max={12} onChange={(clipCount) => s.set({ clipCount })} />
 
-      <div className="grid gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <ScanFace aria-hidden className="size-4 text-lavender" /> Speaker tracking
-        </div>
-        <SettingRow
-          id="tracking"
-          title="Keep speakers in frame"
-          description="Reframes each shot around the active face."
-          checked={s.tracking}
-          onChange={(tracking) => s.set({ tracking })}
-        />
-        {s.tracking && (
-          <>
-            <Segmented<TrackingMode>
-              label="Tracking mode"
-              value={s.trackingMode}
-              onChange={(trackingMode) => s.set({ trackingMode })}
-              size="sm"
-              options={[
-                { value: "auto", label: "Auto" },
-                { value: "active-speaker", label: "Active speaker" },
-                { value: "multi", label: "Split screen" },
-              ]}
-            />
-            <SliderField
-              label="Camera smoothness"
-              value={s.trackingSmoothness}
-              min={0}
-              max={100}
-              format={(v) => `${v}%`}
-              onChange={(trackingSmoothness) => s.set({ trackingSmoothness })}
-            />
-          </>
-        )}
+      <div className="flex gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm">
+        <ScanFace aria-hidden className="mt-0.5 size-4 shrink-0 text-lavender" />
+        <p className="text-muted-foreground">
+          <span className="font-medium text-foreground">Framing:</span> each clip is centre-cropped to {s.aspect}. Following the speaker&apos;s face
+          is planned for a later version.
+        </p>
       </div>
 
       <div className="grid gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
@@ -165,16 +136,10 @@ export function ClipSettings() {
         )}
       </div>
 
-      {busy ? (
-        <Button size="lg" variant="glass" onClick={s.cancel}>
-          <Square aria-hidden /> Cancel analysis
-        </Button>
-      ) : (
-        <Button size="lg" onClick={s.start} disabled={!s.source}>
-          <Sparkles aria-hidden /> {s.phase === "done" ? "Regenerate clips" : "Generate clips"}
-        </Button>
-      )}
-      {!s.source && <p className="-mt-3 text-center text-xs text-muted-foreground">Add a source video to enable generation.</p>}
+      <Button size="lg" onClick={onGenerate} disabled={!canGenerate || busy}>
+        <Sparkles aria-hidden /> {busy ? "Working…" : hasClips ? "Regenerate clips" : "Generate clips"}
+      </Button>
+      {!canGenerate && <p className="-mt-3 text-center text-xs text-muted-foreground">{disabledReason}</p>}
     </GlassCard>
   );
 }
