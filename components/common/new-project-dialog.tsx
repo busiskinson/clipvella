@@ -19,7 +19,7 @@ const KINDS: { id: ProjectKind; blurb: string }[] = [
   { id: "clip", blurb: "Find highlights in a long video" },
   { id: "edit", blurb: "Edit on a multitrack timeline" },
   { id: "captions", blurb: "Style animated subtitles" },
-  { id: "music", blurb: "Generate a backing track" },
+  { id: "import", blurb: "Bring in a video from a link or file" },
 ];
 
 export function NewProjectDialog() {

@@ -13,7 +13,7 @@ const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: 
 
 export const metadata: Metadata = {
   title: { default: "ClipForge AI", template: "%s · ClipForge AI" },
-  description: "AI-powered clipping, editing, captions and original music for short-form video.",
+  description: "AI-powered clipping, editing, captions and video import for short-form video.",
 };
 
 export const viewport: Viewport = {

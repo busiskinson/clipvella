@@ -68,7 +68,7 @@ function TextSetting({ id, label, value, onSave }: { id: string; label: string; 
 const INTEGRATIONS = [
   { name: "Highlight detection model", purpose: "AI Video Clipper" },
   { name: "Speech-to-text", purpose: "Subtitles and Caption Studio" },
-  { name: "Music generation API", purpose: "AI Music Studio" },
+  { name: "Media import service", purpose: "Video Downloader (authorized downloads only)" },
   { name: "Video rendering service", purpose: "Exports and clip downloads" },
 ];
 
@@ -164,7 +164,7 @@ export function SettingsView() {
       <GlassCard className="p-5 sm:p-6">
         <CardHeader icon={Bell} title="Notifications" description="Email delivery needs an account backend." />
         <div className="mt-2 divide-y divide-white/[0.06]">
-          <ToggleRow id="notify-done" label="Processing complete" description="When clips, exports or music finish." checked={s.notifyOnComplete} onChange={(notifyOnComplete) => update({ notifyOnComplete })} />
+          <ToggleRow id="notify-done" label="Processing complete" description="When clips, exports or imports finish." checked={s.notifyOnComplete} onChange={(notifyOnComplete) => update({ notifyOnComplete })} />
           <ToggleRow id="digest" label="Weekly digest" description="A summary of your usage and top clips." checked={s.weeklyDigest} onChange={(weeklyDigest) => update({ weeklyDigest })} />
         </div>
       </GlassCard>
@@ -187,7 +187,7 @@ export function SettingsView() {
       </GlassCard>
 
       <GlassCard className="p-5 sm:p-6">
-        <CardHeader icon={Database} title="Local data" description="Projects, music history and settings are stored in this browser." />
+        <CardHeader icon={Database} title="Local data" description="Projects, download history and settings are stored in this browser." />
         <div className="mt-5 flex flex-wrap gap-2">
           <Button
             variant="glass"

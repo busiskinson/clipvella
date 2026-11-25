@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { AspectRatio, GeneratedClip } from "@/lib/types";
 import { seeded } from "@/lib/format";
+import { useMediaRegistry } from "./media-registry";
 
 export type ClipLength = "auto" | "15-30" | "30-60" | "60-90";
 export type TrackingMode = "auto" | "active-speaker" | "multi";
@@ -14,10 +15,14 @@ export interface ClipSource {
   /** object URL (file) or the pasted link (url) */
   url: string;
   size?: number;
-  /** seconds — read from the video element for files; assumed for URLs */
+  /** seconds — read from the video element for files; 0 when unknown (links) */
   duration: number;
   platform?: string;
+  thumbnail?: string | null;
 }
+
+/** Links have no known length until the media service imports them; the demo analysis uses a nominal 10 min. */
+export const analysisDuration = (source: ClipSource | null) => (source?.duration ? source.duration : 600);
 
 export const ANALYSIS_STEPS = [
   { id: "ingest", label: "Preparing video", detail: "Reading container, audio and frame rate" },
@@ -93,7 +98,7 @@ function buildClips(source: ClipSource, count: number, length: ClipLength, heatm
   const seed = Array.from(source.name).reduce((n, c) => n + c.charCodeAt(0), 0) + count;
   const rnd = seeded(seed);
   const [minL, maxL] = LENGTH_RANGE[length];
-  const dur = Math.max(source.duration, 20);
+  const dur = Math.max(analysisDuration(source), 20);
   // rank buckets by engagement, take the strongest as clip anchors
   const ranked = heatmap.map((v, i) => ({ v, i })).sort((a, b) => b.v - a.v);
   const clips: GeneratedClip[] = [];
@@ -137,7 +142,9 @@ export const useClipperStore = create<ClipperState>()((set, get) => ({
 
   setSource: (source) => {
     const prev = get().source;
-    if (prev?.kind === "file" && prev.url !== source?.url) URL.revokeObjectURL(prev.url);
+    // Files imported through the Video Downloader are shared with My Projects / the editor — keep them alive.
+    const shared = Object.values(useMediaRegistry.getState().files).some((f) => f.url === prev?.url);
+    if (prev?.kind === "file" && prev.url !== source?.url && !shared) URL.revokeObjectURL(prev.url);
     get().cancel();
     set({ source, phase: "idle", clips: [], heatmap: [], progress: 0, stepIndex: 0 });
   },

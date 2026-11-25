@@ -1,7 +1,7 @@
 import {
-  AudioWaveform,
   Captions,
   Clapperboard,
+  Download,
   FolderKanban,
   LayoutDashboard,
   Scissors,
@@ -21,7 +21,7 @@ export const NAV_CREATE: NavItem[] = [
   { href: "/clipper", label: "AI Video Clipper", description: "Turn long videos into shorts", icon: Scissors },
   { href: "/editor", label: "Video Editor", description: "Multitrack timeline editing", icon: Clapperboard },
   { href: "/captions", label: "Caption Studio", description: "Style animated subtitles", icon: Captions },
-  { href: "/music", label: "AI Music Studio", description: "Original background music", icon: AudioWaveform },
+  { href: "/downloader", label: "Video Downloader", description: "Import videos from links or files", icon: Download },
 ];
 
 export const NAV_LIBRARY: NavItem[] = [

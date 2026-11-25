@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, AudioWaveform, Plus, Scissors } from "lucide-react";
+import { ArrowRight, Download, Plus, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -24,8 +24,8 @@ export function WelcomeHero() {
             Turn long videos into <span className="text-gradient">scroll-stopping shorts</span>
           </h1>
           <p className="mt-3 max-w-xl text-[15px] text-muted-foreground text-pretty">
-            Clip highlights, polish them on a multitrack timeline, add animated captions and score them with original
-            music, all in one workspace.
+            Import a video, clip its highlights, polish them on a multitrack timeline and add animated captions, all in
+            one workspace.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button size="lg" onClick={() => setNewProject(true)}>
@@ -48,10 +48,10 @@ export function WelcomeHero() {
             accent="violet"
           />
           <ShortcutCard
-            href="/music"
-            icon={AudioWaveform}
-            title="AI Music Studio"
-            body="Describe a vibe and sketch an original backing track."
+            href="/downloader"
+            icon={Download}
+            title="Video Downloader"
+            body="Paste a TikTok, YouTube or Reels link, or drop in a file."
             accent="ice"
           />
         </div>

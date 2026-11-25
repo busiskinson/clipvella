@@ -2,14 +2,13 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { ArrowUpRight, AudioLines, Captions, Film, Plus, Sparkles, Type, Upload, X } from "lucide-react";
+import { ArrowUpRight, AudioLines, Captions, Film, Plus, Type, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { SceneThumb } from "@/components/common/scene-thumb";
 import { useEditorStore } from "@/stores/editor-store";
 import { useCaptionStore } from "@/stores/caption-store";
-import { useMusicStore } from "@/stores/music-store";
 import { CAPTION_TEMPLATES } from "@/lib/sample-data";
 import { formatDuration, formatTime, uid } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -62,14 +61,18 @@ function MediaTab() {
               </div>
             ) : (
               <SceneThumb hue={m.hue} className="aspect-video" subject={false}>
-                {m.url && <span className="absolute top-1 left-1 rounded bg-black/60 px-1 text-[10px]">Local</span>}
+                {m.thumbnailUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- platform CDN or local data URL
+                  <img src={m.thumbnailUrl} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />
+                )}
+                {(m.url || m.remote) && <span className="absolute top-1 left-1 rounded bg-black/60 px-1 text-[10px]">{m.remote ? "Link" : "Local"}</span>}
               </SceneThumb>
             )}
             <div className="p-1.5">
               <p className="truncate text-[11px] font-medium" title={m.name}>{m.name}</p>
               <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 {m.kind === "audio" ? <AudioLines aria-hidden className="size-3" /> : <Film aria-hidden className="size-3" />}
-                {formatDuration(m.duration)}
+                {m.remote && !m.duration ? "Not downloaded" : formatDuration(m.duration)}
               </p>
             </div>
             <div className="absolute top-1 right-1 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
@@ -144,45 +147,52 @@ function CaptionsTab() {
 }
 
 function AudioTab() {
-  const tracks = useMusicStore((s) => s.tracks);
+  const media = useEditorStore((s) => s.media);
+  const audio = media.filter((m) => m.kind === "audio");
   const addMedia = useEditorStore((s) => s.addMedia);
   const addClip = useEditorStore((s) => s.addClipFromMedia);
+  const input = useRef<HTMLInputElement>(null);
+
+  const onFiles = async (files: FileList | null) => {
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("audio/")) {
+        toast.error(`${file.name} is not an audio file`);
+        continue;
+      }
+      const url = URL.createObjectURL(file);
+      const duration = await readDuration(url, "audio");
+      addMedia({ id: uid("m"), name: file.name, kind: "audio", duration, url, hue: 2 });
+      toast.success(`Imported ${file.name}`, { description: "Plays locally. Nothing is uploaded." });
+    }
+  };
 
   return (
     <div className="grid gap-3">
-      <p className="text-xs text-muted-foreground">Tracks from your AI Music Studio history.</p>
-      <ul className="grid gap-1.5">
-        {tracks.map((t) => (
-          <li key={t.id} className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-2">
-            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-ice/10 text-ice">
-              <AudioLines aria-hidden className="size-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium">{t.title}</span>
-              <span className="block text-[10px] text-muted-foreground">
-                {t.genre} · {formatDuration(t.duration)}
-              </span>
-            </span>
-            <Button
-              size="icon-xs"
-              variant="secondary"
-              aria-label={`Add ${t.title} to the music track`}
-              onClick={() => {
-                const id = uid("m");
-                addMedia({ id, name: `${t.title}.wav`, kind: "audio", duration: t.duration, hue: 2 });
-                addClip(id);
-              }}
-            >
-              <Plus aria-hidden />
-            </Button>
-          </li>
-        ))}
-      </ul>
-      <Button variant="glass" asChild>
-        <Link href="/music">
-          <Sparkles aria-hidden /> Generate new music <ArrowUpRight aria-hidden />
-        </Link>
+      <Button variant="glass" className="w-full" onClick={() => input.current?.click()}>
+        <Upload aria-hidden /> Import audio
       </Button>
+      <input ref={input} type="file" accept="audio/*" multiple className="sr-only" aria-label="Import audio files" onChange={(e) => { void onFiles(e.target.files); e.target.value = ""; }} />
+      {audio.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">No audio yet. Import a music or voice-over file.</p>
+      ) : (
+        <ul className="grid gap-1.5">
+          {audio.map((m) => (
+            <li key={m.id} className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-2">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-ice/10 text-ice">
+                <AudioLines aria-hidden className="size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium" title={m.name}>{m.name}</span>
+                <span className="block text-[10px] text-muted-foreground">{formatDuration(m.duration)}</span>
+              </span>
+              <Button size="icon-xs" variant="secondary" aria-label={`Add ${m.name} to the audio track`} onClick={() => addClip(m.id)}>
+                <Plus aria-hidden />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

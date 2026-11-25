@@ -6,14 +6,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { useProjectStore } from "@/stores/project-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { useMusicStore } from "@/stores/music-store";
+import { useDownloaderStore } from "@/stores/downloader-store";
 
 /** Rehydrate persisted stores after mount so server and client first render match. */
 function StoreHydrator() {
   useEffect(() => {
     void useProjectStore.persist.rehydrate();
     void useSettingsStore.persist.rehydrate();
-    void useMusicStore.persist.rehydrate();
+    void useDownloaderStore.persist.rehydrate();
   }, []);
   return null;
 }

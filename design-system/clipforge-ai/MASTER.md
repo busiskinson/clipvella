@@ -56,9 +56,17 @@ Source of truth for every page. Page-specific overrides live in `pages/<page>.md
 - No emoji icons — Lucide only.
 - Responsive checkpoints: 375 / 768 / 1024 / 1440. The editor collapses its side panels below 1024px.
 
+## Page notes
+
+- **Video Downloader** (replaced the AI Music Studio): TikTokio-style centred hero with one large URL field
+  (`type="url"`, visible sr-only label, live platform chips, inline `role="alert"` errors), skeleton while
+  checking, result card, drag-and-drop with a "Browse files" button (never drag-only), history with empty
+  state, and a service-status card. Same glass surfaces and tokens as every other page.
+
 ## Honesty rules (product)
 
-- Anything that needs a backend (AI analysis, clip generation, transcription, music generation, export render)
+- Anything that needs a backend (AI analysis, clip generation, transcription, export render)
   is simulated and marked with a `Demo` badge or "sample data" label.
-- Music Studio "inspiration" analyses only style descriptors of videos the user can access. It never extracts,
-  reproduces or downloads copyrighted audio.
+- Video Downloader never shows invented media data: details come from official oEmbed or the user's own file,
+  missing fields say so ("Not shared by platform"), and downloads report "needs media service" until an
+  authorized service is connected. Private videos, DRM and platform restrictions are never bypassed.

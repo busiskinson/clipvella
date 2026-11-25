@@ -64,7 +64,7 @@ export function ProjectsView() {
             { value: "clip", label: "Clips" },
             { value: "edit", label: "Edits" },
             { value: "captions", label: "Captions" },
-            { value: "music", label: "Music" },
+            { value: "import", label: "Imports" },
           ]}
         />
         <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>

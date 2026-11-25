@@ -80,6 +80,18 @@ export function PreviewStage() {
           >
             {videoMedia?.url ? (
               <VideoLayer clip={videoClip} media={videoMedia} muted={videoMuted} />
+            ) : videoMedia?.remote ? (
+              <span className="absolute inset-0 grid place-items-center bg-black">
+                {videoMedia.thumbnailUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- remote platform thumbnail, host varies
+                  <img src={videoMedia.thumbnailUrl} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover opacity-80" />
+                )}
+                <span className="relative mx-3 rounded-lg bg-black/70 px-2.5 py-1.5 text-center text-[11px] leading-snug text-white/90 backdrop-blur">
+                  Linked video · file not downloaded
+                  <br />
+                  Playback needs the media service
+                </span>
+              </span>
             ) : (
               <SceneThumb hue={videoClip.hue} className="absolute inset-0">
                 <span className="absolute top-3 left-3 rounded bg-black/50 px-1.5 py-0.5 text-[10px] text-white/80 backdrop-blur">Sample clip</span>

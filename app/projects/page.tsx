@@ -11,7 +11,7 @@ export default function ProjectsPage() {
       <PageHeader
         eyebrow={<SampleDataNote>Sample projects · stored in this browser</SampleDataNote>}
         title="My Projects"
-        description="Every clip, edit, caption set and music track you have made."
+        description="Every clip, edit, caption set and imported video you have made."
         actions={<NewProjectButton />}
       />
       <ProjectsView />

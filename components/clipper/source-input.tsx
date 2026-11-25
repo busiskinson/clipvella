@@ -65,8 +65,8 @@ export function SourceInput() {
       return;
     }
     setUrlError(null);
-    // Without a backend we cannot fetch remote media; assume a 24-minute source for the demo.
-    setSource({ kind: "url", name: url.trim(), url: url.trim(), duration: 24 * 60, platform });
+    // Without the media service the length of a remote video is unknown.
+    setSource({ kind: "url", name: url.trim(), url: url.trim(), duration: 0, platform });
   };
 
   return (
@@ -86,11 +86,17 @@ export function SourceInput() {
                 <track kind="captions" />
               </video>
             ) : (
-              <SceneThumb hue={2} className="grid aspect-video place-items-center">
-                <span className="relative rounded-full bg-black/55 px-3 py-1 text-xs backdrop-blur-md">
-                  {source.platform} preview available after backend import
+              <div className="relative grid aspect-video place-items-center">
+                {source.thumbnail ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- remote platform thumbnail, host varies
+                  <img src={source.thumbnail} alt="" referrerPolicy="no-referrer" className="absolute inset-0 size-full object-cover" />
+                ) : (
+                  <SceneThumb hue={2} className="absolute inset-0" subject={false} />
+                )}
+                <span className="relative rounded-full bg-black/60 px-3 py-1 text-xs backdrop-blur-md">
+                  {source.platform} · playback needs the media service
                 </span>
-              </SceneThumb>
+              </div>
             )}
           </div>
           <div className="min-w-0">
@@ -105,8 +111,7 @@ export function SourceInput() {
               <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
                 <dt className="text-xs text-muted-foreground">Length</dt>
                 <dd className="mt-0.5 font-medium tabular-nums">
-                  {source.duration ? formatDuration(source.duration) : "Reading…"}
-                  {source.kind === "url" && <span className="ml-1 text-xs font-normal text-muted-foreground">(est.)</span>}
+                  {source.duration ? formatDuration(source.duration) : source.kind === "url" ? "Unknown" : "Reading…"}
                 </dd>
               </div>
             </dl>

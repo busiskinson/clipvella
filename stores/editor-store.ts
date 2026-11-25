@@ -85,6 +85,8 @@ interface EditorState extends Snapshot {
   duplicateSelected: () => void;
   toggleTrack: (id: string, key: "muted" | "locked" | "hidden") => void;
   setProjectName: (name: string) => void;
+  /** Start a fresh timeline from an imported video (Video Downloader / My Projects). */
+  openImport: (input: { projectName: string; aspect: AspectRatio; media: MediaItem }) => void;
 }
 
 export const MIN_ZOOM = 12;
@@ -170,7 +172,8 @@ export const useEditorStore = create<EditorState>()((set, get) => {
           trackId,
           name: m.name,
           start: end,
-          duration: Math.min(m.duration, m.kind === "audio" ? 60 : 20),
+          // linked (not downloaded) media has no known length — use a 10s placeholder
+          duration: m.duration > 0 ? Math.min(m.duration, m.kind === "audio" ? 60 : 20) : 10,
           sourceIn: 0,
           mediaId: m.id,
           hue: m.hue,
@@ -250,6 +253,33 @@ export const useEditorStore = create<EditorState>()((set, get) => {
     toggleTrack: (id, key) =>
       commit((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, [key]: !t[key] } : t)) })),
     setProjectName: (projectName) => set({ projectName }),
+    openImport: ({ projectName, aspect, media }) => {
+      // Remote links have no file yet, so their length is unknown; use a 10s placeholder block.
+      const length = media.duration > 0 ? media.duration : 10;
+      const clip: TimelineClip = {
+        id: uid("k"),
+        trackId: "t-video",
+        name: media.name,
+        start: 0,
+        duration: length,
+        sourceIn: 0,
+        mediaId: media.id,
+        hue: media.hue,
+        props: { ...DEFAULT_PROPS },
+      };
+      set((s) => ({
+        projectName,
+        aspect,
+        media: [media, ...s.media.filter((m) => m.id !== media.id)],
+        tracks: INITIAL_TRACKS,
+        clips: [clip],
+        playhead: 0,
+        playing: false,
+        selectedClipId: clip.id,
+        past: [],
+        future: [],
+      }));
+    },
   };
 });
 

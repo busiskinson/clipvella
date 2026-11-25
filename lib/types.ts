@@ -1,4 +1,5 @@
-export type ProjectKind = "clip" | "edit" | "captions" | "music";
+export type ProjectKind = "clip" | "edit" | "captions" | "import";
+export type SupportedPlatform = "youtube" | "tiktok" | "facebook";
 export type ProjectStatus = "draft" | "processing" | "ready";
 export type AspectRatio = "9:16" | "1:1" | "16:9" | "4:5";
 
@@ -15,6 +16,20 @@ export interface Project {
   /** index into the scene gradient list, purely visual */
   hue: number;
   clips?: number;
+  /** Set for projects created by the Video Downloader */
+  source?: ProjectSource;
+}
+
+export interface ProjectSource {
+  type: "link" | "file";
+  /** canonical link for link imports */
+  url?: string;
+  platform?: SupportedPlatform;
+  author?: string;
+  /** remote thumbnail URL (link) or small data URL captured from the file */
+  thumbnail?: string;
+  fileName?: string;
+  fileSize?: number;
 }
 
 /* ---------- Editor ---------- */
@@ -68,6 +83,10 @@ export interface MediaItem {
   /** object URL for files imported this session; undefined for sample media */
   url?: string;
   hue: number;
+  /** poster image for media that only exists as a remote link */
+  thumbnailUrl?: string;
+  /** true when the file has not been downloaded (needs the media service) */
+  remote?: boolean;
 }
 
 /* ---------- Captions ---------- */
@@ -123,23 +142,6 @@ export interface CaptionTemplate {
   name: string;
   description: string;
   style: Partial<CaptionStyle>;
-}
-
-/* ---------- Music ---------- */
-export type MusicVoice = "instrumental" | "vocal";
-
-export interface MusicTrack {
-  id: string;
-  title: string;
-  prompt: string;
-  genre: string;
-  mood: string;
-  voice: MusicVoice;
-  duration: number;
-  bpm: number;
-  createdAt: string;
-  seed: number;
-  favorite: boolean;
 }
 
 /* ---------- Clipper ---------- */

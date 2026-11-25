@@ -1,4 +1,4 @@
-import type { Caption, CaptionStyle, CaptionTemplate, MusicTrack, Project } from "./types";
+import type { Caption, CaptionStyle, CaptionTemplate, Project } from "./types";
 
 /**
  * SAMPLE DATA — every value here is illustrative and rendered with a "sample data" label.
@@ -21,7 +21,6 @@ export const SAMPLE_PROJECTS: Project[] = [
   { id: "p1", name: "Founder podcast — Ep. 42", kind: "clip", status: "ready", aspect: "9:16", duration: 3120, updatedAt: "2026-11-24T16:20:00Z", hue: 0, clips: 12 },
   { id: "p2", name: "Product launch teaser", kind: "edit", status: "draft", aspect: "16:9", duration: 74, updatedAt: "2026-11-23T10:05:00Z", hue: 3 },
   { id: "p3", name: "Morning routine vlog", kind: "captions", status: "ready", aspect: "9:16", duration: 182, updatedAt: "2026-11-22T19:41:00Z", hue: 1 },
-  { id: "p4", name: "Lo-fi study background", kind: "music", status: "ready", aspect: "16:9", duration: 150, updatedAt: "2026-11-21T08:12:00Z", hue: 2 },
   { id: "p5", name: "Webinar: Scaling teams", kind: "clip", status: "processing", aspect: "1:1", duration: 2640, updatedAt: "2026-11-20T14:30:00Z", hue: 4, clips: 0 },
   { id: "p6", name: "Recipe short — Ramen", kind: "edit", status: "ready", aspect: "9:16", duration: 58, updatedAt: "2026-11-18T12:00:00Z", hue: 5 },
   { id: "p7", name: "Gaming highlights week 47", kind: "clip", status: "ready", aspect: "16:9", duration: 5400, updatedAt: "2026-11-15T21:10:00Z", hue: 3, clips: 18 },
@@ -34,7 +33,7 @@ export const SAMPLE_USAGE = {
     { label: "Clips generated", value: 148, delta: "+18%", unit: "" },
     { label: "Minutes processed", value: 612, delta: "+9%", unit: "min" },
     { label: "Captions styled", value: 87, delta: "+31%", unit: "" },
-    { label: "Music tracks", value: 24, delta: "+4", unit: "" },
+    { label: "Videos imported", value: 24, delta: "+4", unit: "" },
   ],
   /** minutes processed per day, last 14 days */
   daily: [18, 26, 22, 31, 12, 9, 34, 40, 28, 36, 44, 21, 38, 47],
@@ -109,13 +108,4 @@ export const CAPTION_TEMPLATES: CaptionTemplate[] = [
     description: "Oswald caps with a soft background strip",
     style: { font: "Oswald", fontWeight: 600, uppercase: true, textColor: "#F8FAFC", highlightColor: "#C4B5FD", highlightMode: "word-pop", animation: "typewriter", bgColor: "#7C3AED", bgOpacity: 85, outlineWidth: 0, shadowBlur: 0, wordsPerLine: 4 },
   },
-];
-
-export const GENRES = ["Lo-fi", "Cinematic", "Electronic", "Hip-hop", "Pop", "Ambient", "Rock", "Acoustic"] as const;
-export const MOODS = ["Uplifting", "Chill", "Energetic", "Dark", "Dreamy", "Epic", "Playful", "Melancholic"] as const;
-
-export const SAMPLE_MUSIC: MusicTrack[] = [
-  { id: "m1", title: "Midnight Notebook", prompt: "Warm lo-fi beat with vinyl crackle for a late-night study vlog", genre: "Lo-fi", mood: "Chill", voice: "instrumental", duration: 150, bpm: 82, createdAt: "2026-11-24T22:10:00Z", seed: 11, favorite: true },
-  { id: "m2", title: "Launch Sequence", prompt: "Rising cinematic synths building to a big drop for a product reveal", genre: "Cinematic", mood: "Epic", voice: "instrumental", duration: 60, bpm: 120, createdAt: "2026-11-23T11:32:00Z", seed: 27, favorite: false },
-  { id: "m3", title: "Neon Commute", prompt: "Upbeat electronic groove, bright plucks, city at night", genre: "Electronic", mood: "Energetic", voice: "instrumental", duration: 90, bpm: 124, createdAt: "2026-11-21T08:04:00Z", seed: 43, favorite: false },
 ];

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, Radar } from "lucide-react";
 import { CardHeader, DemoBadge, GlassCard } from "@/components/common/page";
 import { Progress } from "@/components/ui/progress";
-import { ANALYSIS_STEPS, useClipperStore } from "@/stores/clipper-store";
+import { ANALYSIS_STEPS, analysisDuration, useClipperStore } from "@/stores/clipper-store";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,9 @@ export function AnalysisPanel() {
   const stepIndex = useClipperStore((s) => s.stepIndex);
   const heatmap = useClipperStore((s) => s.heatmap);
   const clips = useClipperStore((s) => s.clips);
-  const duration = useClipperStore((s) => s.source?.duration ?? 0);
+  const source = useClipperStore((s) => s.source);
+  const duration = analysisDuration(source);
+  const lengthUnknown = !source?.duration;
 
   if (phase === "idle") return null;
 
@@ -93,7 +95,7 @@ export function AnalysisPanel() {
                   <span className="inline-block size-2 rounded-sm bg-violet" /> Detected clip
                 </span>
               )}
-              <span>{formatTime(duration)}</span>
+              <span>{lengthUnknown ? "Length unknown · illustrative" : formatTime(duration)}</span>
             </div>
           </div>
         </div>
