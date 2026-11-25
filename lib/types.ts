@@ -18,6 +18,8 @@ export interface Project {
   clips?: number;
   /** Set for projects created by the Video Downloader */
   source?: ProjectSource;
+  /** media_assets id of the uploaded source video, when there is one */
+  sourceAssetId?: string;
 }
 
 export interface ProjectSource {

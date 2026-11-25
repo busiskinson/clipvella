@@ -1,32 +1,50 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Gauge, TrendingUp } from "lucide-react";
-import { CardHeader, GlassCard, SampleDataNote } from "@/components/common/page";
-import { SAMPLE_USAGE } from "@/lib/sample-data";
+import { BarChart3, HardDrive } from "lucide-react";
+import { CardHeader, GlassCard } from "@/components/common/page";
+import { useUsage } from "@/lib/data/hooks";
+import { STORAGE_LIMIT_BYTES, type UsageSummary } from "@/lib/data/usage";
+import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dayLabel = (iso: string) => {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d}`;
+};
+
+function StatSkeleton() {
+  return <span className="inline-block h-8 w-14 animate-pulse rounded bg-white/[0.08]" />;
+}
+
 export function UsageStats() {
+  const { data, error } = useUsage();
+  const stats: { label: string; key: keyof UsageSummary; unit?: string }[] = [
+    { label: "Clips generated", key: "clips" },
+    { label: "Minutes processed", key: "minutes_processed", unit: "min" },
+    { label: "Transcripts created", key: "captions" },
+    { label: "Videos imported", key: "imports" },
+  ];
+
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Usage this month</h2>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="hidden sm:inline">{SAMPLE_USAGE.period}</span>
-          <SampleDataNote />
-        </div>
+        <h2 className="text-lg font-semibold">Your usage</h2>
+        <span className="text-xs text-muted-foreground">All time</span>
       </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          Couldn&apos;t load usage: {error}
+        </p>
+      )}
       <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {SAMPLE_USAGE.stats.map((s) => (
-          <li key={s.label} className="glass rounded-2xl p-4 sm:p-5">
+        {stats.map((s) => (
+          <li key={s.key} className="glass rounded-2xl p-4 sm:p-5">
             <p className="text-sm text-muted-foreground">{s.label}</p>
             <p className="mt-2 flex items-baseline gap-1.5">
-              <span className="font-heading text-3xl font-semibold tabular-nums">{s.value}</span>
+              {data ? <span className="font-heading text-3xl font-semibold tabular-nums">{data[s.key] as number}</span> : <StatSkeleton />}
               {s.unit && <span className="text-sm text-muted-foreground">{s.unit}</span>}
-            </p>
-            <p className="mt-1 inline-flex items-center gap-1 text-xs text-success">
-              <TrendingUp aria-hidden className="size-3" />
-              {s.delta} <span className="text-muted-foreground">vs last month</span>
             </p>
           </li>
         ))}
@@ -37,116 +55,114 @@ export function UsageStats() {
 
 /** Single-series bar chart: minutes processed per day. Title names the series, so no legend. */
 export function ActivityChart() {
-  const data = SAMPLE_USAGE.daily;
-  const max = Math.max(...data);
+  const { data: usage } = useUsage();
+  const days = usage?.activity ?? [];
+  const values = days.map((d) => d.minutes);
+  const max = Math.max(1, ...values);
   const [hover, setHover] = useState<number | null>(null);
   const ticks = [0, Math.round(max / 2), max];
-  const dayLabel = (i: number) => `Nov ${12 + i}`;
+  const empty = usage && values.every((v) => v === 0);
 
   return (
     <GlassCard className="flex flex-col p-5 sm:p-6">
-      <CardHeader
-        icon={BarChart3}
-        title="Minutes processed per day"
-        description="Last 14 days"
-        actions={<SampleDataNote />}
-      />
+      <CardHeader icon={BarChart3} title="Minutes processed per day" description="Last 14 days" />
       <div className="relative mt-6 flex h-48 gap-3">
-        {/* y axis */}
         <div aria-hidden className="flex flex-col justify-between pb-6 text-right text-[11px] tabular-nums text-muted-foreground">
-          {[...ticks].reverse().map((t) => (
-            <span key={t}>{t}</span>
+          {[...ticks].reverse().map((t, i) => (
+            <span key={i}>{t}</span>
           ))}
         </div>
         <div className="relative flex-1">
-          {/* recessive grid */}
           <div aria-hidden className="absolute inset-x-0 top-0 bottom-6 flex flex-col justify-between">
-            {ticks.map((t) => (
-              <div key={t} className="border-t border-dashed border-white/[0.06]" />
+            {ticks.map((_, i) => (
+              <div key={i} className="border-t border-dashed border-white/[0.06]" />
             ))}
           </div>
+          {empty && (
+            <p className="absolute inset-x-0 top-1/3 text-center text-sm text-muted-foreground">No videos processed yet</p>
+          )}
           <div className="absolute inset-x-0 top-0 bottom-6 flex items-end gap-[2px]" onMouseLeave={() => setHover(null)}>
-            {data.map((v, i) => (
+            {days.map((d, i) => (
               <button
-                key={i}
+                key={d.day}
                 type="button"
                 className="group relative flex h-full flex-1 items-end outline-offset-1"
                 onMouseEnter={() => setHover(i)}
                 onFocus={() => setHover(i)}
                 onBlur={() => setHover(null)}
-                aria-label={`${dayLabel(i)}: ${v} minutes`}
+                aria-label={`${dayLabel(d.day)}: ${d.minutes} minutes`}
               >
                 <span
-                  className={cn(
-                    "block w-full rounded-t-[4px] transition-colors duration-150",
-                    hover === null || hover === i ? "bg-violet" : "bg-violet/45",
-                  )}
-                  style={{ height: `${(v / max) * 100}%` }}
+                  className={cn("block w-full rounded-t-[4px] transition-colors duration-150", hover === null || hover === i ? "bg-violet" : "bg-violet/45")}
+                  style={{ height: `${(d.minutes / max) * 100}%` }}
                 />
               </button>
             ))}
           </div>
-          {hover !== null && (
+          {hover !== null && days[hover] && (
             <div
               role="status"
               className="glass-strong pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full rounded-lg px-2.5 py-1.5 text-xs whitespace-nowrap"
-              style={{ left: `${((hover + 0.5) / data.length) * 100}%` }}
+              style={{ left: `${((hover + 0.5) / days.length) * 100}%` }}
             >
-              <span className="text-muted-foreground">{dayLabel(hover)}</span>{" "}
-              <span className="font-semibold tabular-nums">{data[hover]} min</span>
+              <span className="text-muted-foreground">{dayLabel(days[hover].day)}</span>{" "}
+              <span className="font-semibold tabular-nums">{days[hover].minutes} min</span>
             </div>
           )}
-          <div aria-hidden className="absolute inset-x-0 bottom-0 flex justify-between text-[11px] text-muted-foreground">
-            <span>{dayLabel(0)}</span>
-            <span>{dayLabel(data.length - 1)}</span>
-          </div>
+          {days.length > 0 && (
+            <div aria-hidden className="absolute inset-x-0 bottom-0 flex justify-between text-[11px] text-muted-foreground">
+              <span>{dayLabel(days[0].day)}</span>
+              <span>{dayLabel(days[days.length - 1].day)}</span>
+            </div>
+          )}
         </div>
       </div>
       <div className="sr-only">
-      <table>
-        <caption>Minutes processed per day (sample data)</caption>
-        <tbody>
-          {data.map((v, i) => (
-            <tr key={i}>
-              <th scope="row">{dayLabel(i)}</th>
-              <td>{v}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <table>
+          <caption>Minutes processed per day</caption>
+          <tbody>
+            {days.map((d) => (
+              <tr key={d.day}>
+                <th scope="row">{dayLabel(d.day)}</th>
+                <td>{d.minutes}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </GlassCard>
   );
 }
 
-export function CreditsCard() {
-  const { used, total } = SAMPLE_USAGE.credits;
-  const pct = Math.round((used / total) * 100);
+export function StorageCard() {
+  const { data } = useUsage();
+  const used = data?.storage_bytes ?? 0;
+  const pct = Math.min(100, Math.round((used / STORAGE_LIMIT_BYTES) * 100));
   return (
     <GlassCard className="flex flex-col p-5 sm:p-6">
-      <CardHeader icon={Gauge} title="Processing credits" description="Resets Dec 1" actions={<SampleDataNote />} />
+      <CardHeader icon={HardDrive} title="Storage" description="Supabase free plan" />
       <div className="mt-6 flex items-baseline gap-2">
-        <span className="font-heading text-4xl font-semibold tabular-nums">{total - used}</span>
-        <span className="text-sm text-muted-foreground">minutes left</span>
+        <span className="font-heading text-4xl font-semibold tabular-nums">{data ? formatBytes(STORAGE_LIMIT_BYTES - used) : "…"}</span>
+        <span className="text-sm text-muted-foreground">free</span>
       </div>
       <div
         className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.08]"
         role="progressbar"
-        aria-label="Credits used"
+        aria-label="Storage used"
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
       >
-        <div className="h-full rounded-full bg-gradient-to-r from-violet to-ice" style={{ width: `${pct}%` }} />
+        <div className={cn("h-full rounded-full", pct > 90 ? "bg-destructive" : "bg-gradient-to-r from-violet to-ice")} style={{ width: `${pct}%` }} />
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
           <dt className="text-muted-foreground">Used</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums">{used} min</dd>
+          <dd className="mt-0.5 font-semibold tabular-nums">{formatBytes(used)}</dd>
         </div>
         <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
           <dt className="text-muted-foreground">Plan</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums">{total} min</dd>
+          <dd className="mt-0.5 font-semibold tabular-nums">{formatBytes(STORAGE_LIMIT_BYTES)}</dd>
         </div>
       </dl>
     </GlassCard>

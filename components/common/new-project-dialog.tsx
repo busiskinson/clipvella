@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUIStore } from "@/stores/ui-store";
-import { useProjectStore } from "@/stores/project-store";
+import { createProject } from "@/lib/data/projects";
 import { useSettingsStore } from "@/stores/settings-store";
 import type { AspectRatio, ProjectKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,6 @@ const KINDS: { id: ProjectKind; blurb: string }[] = [
 export function NewProjectDialog() {
   const open = useUIStore((s) => s.newProjectOpen);
   const setOpen = useUIStore((s) => s.setNewProject);
-  const createProject = useProjectStore((s) => s.createProject);
   const defaultAspect = useSettingsStore((s) => s.defaultAspect);
   const router = useRouter();
 
@@ -41,18 +40,27 @@ export function NewProjectDialog() {
     setError(null);
   };
 
-  const submit = (e: React.FormEvent) => {
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (trimmed.length < 2) {
       setError("Give your project a name of at least 2 characters.");
       return;
     }
-    const project = createProject({ name: trimmed, kind, aspect: aspect ?? defaultAspect });
-    toast.success(`Created “${project.name}”`);
-    setOpen(false);
-    reset();
-    router.push(PROJECT_KIND_META[kind].href);
+    setSaving(true);
+    try {
+      const project = await createProject({ name: trimmed, kind, aspect: aspect ?? defaultAspect });
+      toast.success(`Created “${project.name}”`);
+      setOpen(false);
+      reset();
+      router.push(`${PROJECT_KIND_META[kind].href}?project=${project.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? `Couldn't create the project: ${err.message}` : "Couldn't create the project.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -129,7 +137,9 @@ export function NewProjectDialog() {
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Create project</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Creating…" : "Create project"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { useProjectStore } from "@/stores/project-store";
+import { useProjects } from "@/lib/data/hooks";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Button } from "@/components/ui/button";
 
 export function RecentProjects() {
-  const projects = useProjectStore((s) => s.projects);
-  const recent = [...projects].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4);
+  const { data, loading, error } = useProjects();
+  const recent = (data ?? []).slice(0, 4);
 
   return (
     <section aria-labelledby="recent-heading" className="grid gap-4">
@@ -23,7 +23,15 @@ export function RecentProjects() {
           </Link>
         </Button>
       </div>
-      {recent.length === 0 ? (
+      {loading ? (
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-busy>
+          {[0, 1, 2, 3].map((i) => (
+            <li key={i} className="glass aspect-[4/3] animate-pulse rounded-2xl" />
+          ))}
+        </ul>
+      ) : error ? (
+        <p role="alert" className="glass rounded-2xl p-8 text-center text-sm text-destructive">Couldn&apos;t load projects: {error}</p>
+      ) : recent.length === 0 ? (
         <p className="glass rounded-2xl p-8 text-center text-sm text-muted-foreground">No projects yet. Create one to get started.</p>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -1,7 +1,7 @@
 import { PageContainer } from "@/components/common/page";
 import { WelcomeHero } from "@/components/dashboard/welcome-hero";
 import { RecentProjects } from "@/components/dashboard/recent-projects";
-import { ActivityChart, CreditsCard, UsageStats } from "@/components/dashboard/usage-stats";
+import { ActivityChart, StorageCard, UsageStats } from "@/components/dashboard/usage-stats";
 
 export default function DashboardPage() {
   return (
@@ -11,7 +11,7 @@ export default function DashboardPage() {
       <UsageStats />
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <ActivityChart />
-        <CreditsCard />
+        <StorageCard />
       </div>
     </PageContainer>
   );

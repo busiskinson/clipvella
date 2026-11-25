@@ -1,8 +1,8 @@
-import type { Caption, CaptionStyle, CaptionTemplate, Project } from "./types";
+import type { Caption, CaptionStyle, CaptionTemplate } from "./types";
 
 /**
- * SAMPLE DATA — every value here is illustrative and rendered with a "sample data" label.
- * Replace with API responses once the backend exists.
+ * Static catalogues (caption fonts, templates, default caption style, decorative gradients).
+ * SAMPLE_CAPTIONS is only the starter text shown in Caption Studio before a project is opened.
  */
 
 /** Visual-only scene gradients used for thumbnails and placeholder previews. */
@@ -16,29 +16,6 @@ export const SCENES = [
 ] as const;
 
 export const sceneFor = (hue: number) => SCENES[Math.abs(hue) % SCENES.length];
-
-export const SAMPLE_PROJECTS: Project[] = [
-  { id: "p1", name: "Founder podcast — Ep. 42", kind: "clip", status: "ready", aspect: "9:16", duration: 3120, updatedAt: "2026-11-24T16:20:00Z", hue: 0, clips: 12 },
-  { id: "p2", name: "Product launch teaser", kind: "edit", status: "draft", aspect: "16:9", duration: 74, updatedAt: "2026-11-23T10:05:00Z", hue: 3 },
-  { id: "p3", name: "Morning routine vlog", kind: "captions", status: "ready", aspect: "9:16", duration: 182, updatedAt: "2026-11-22T19:41:00Z", hue: 1 },
-  { id: "p5", name: "Webinar: Scaling teams", kind: "clip", status: "processing", aspect: "1:1", duration: 2640, updatedAt: "2026-11-20T14:30:00Z", hue: 4, clips: 0 },
-  { id: "p6", name: "Recipe short — Ramen", kind: "edit", status: "ready", aspect: "9:16", duration: 58, updatedAt: "2026-11-18T12:00:00Z", hue: 5 },
-  { id: "p7", name: "Gaming highlights week 47", kind: "clip", status: "ready", aspect: "16:9", duration: 5400, updatedAt: "2026-11-15T21:10:00Z", hue: 3, clips: 18 },
-  { id: "p8", name: "Travel diary — Kyoto", kind: "captions", status: "draft", aspect: "4:5", duration: 96, updatedAt: "2026-11-12T09:45:00Z", hue: 1 },
-];
-
-export const SAMPLE_USAGE = {
-  period: "Nov 1 – Nov 25, 2026",
-  stats: [
-    { label: "Clips generated", value: 148, delta: "+18%", unit: "" },
-    { label: "Minutes processed", value: 612, delta: "+9%", unit: "min" },
-    { label: "Captions styled", value: 87, delta: "+31%", unit: "" },
-    { label: "Videos imported", value: 24, delta: "+4", unit: "" },
-  ],
-  /** minutes processed per day, last 14 days */
-  daily: [18, 26, 22, 31, 12, 9, 34, 40, 28, 36, 44, 21, 38, 47],
-  credits: { used: 612, total: 1000 },
-};
 
 export const SAMPLE_CAPTIONS: Caption[] = [
   { id: "c1", start: 0.0, end: 2.6, text: "Here's the one habit that changed everything" },

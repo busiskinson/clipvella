@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Segmented } from "@/components/common/fields";
-import { useProjectStore } from "@/stores/project-store";
+import { useProjects } from "@/lib/data/hooks";
+import { deleteProject, duplicateProject, renameProject } from "@/lib/data/projects";
 import { useUIStore } from "@/stores/ui-store";
 import type { Project, ProjectKind } from "@/lib/types";
 import { ProjectCard } from "./project-card";
@@ -18,10 +19,12 @@ type KindFilter = "all" | ProjectKind;
 type SortKey = "recent" | "name" | "duration";
 
 export function ProjectsView() {
-  const projects = useProjectStore((s) => s.projects);
-  const rename = useProjectStore((s) => s.renameProject);
-  const duplicate = useProjectStore((s) => s.duplicateProject);
-  const remove = useProjectStore((s) => s.deleteProject);
+  const { data, error, loading } = useProjects();
+  const projects = useMemo(() => data ?? [], [data]);
+  const fail = (what: string) => (e: unknown) => toast.error(`Couldn't ${what}`, { description: e instanceof Error ? e.message : undefined });
+  const rename = (id: string, name: string) => renameProject(id, name).then(() => toast.success("Project renamed")).catch(fail("rename the project"));
+  const duplicate = (p: Project) => duplicateProject(p.id).then(() => toast.success(`Duplicated “${p.name}”`)).catch(fail("duplicate the project"));
+  const remove = (p: Project) => deleteProject(p.id).then(() => toast.success(`Deleted “${p.name}”`)).catch(fail("delete the project"));
   const setNewProject = useUIStore((s) => s.setNewProject);
 
   const [query, setQuery] = useState("");
@@ -80,10 +83,10 @@ export function ProjectsView() {
       </div>
 
       <p className="mb-3 text-sm text-muted-foreground" aria-live="polite">
-        {list.length} {list.length === 1 ? "project" : "projects"}
+        {loading ? "Loading projects…" : error ? <span className="text-destructive">Couldn&apos;t load projects: {error}</span> : `${list.length} ${list.length === 1 ? "project" : "projects"}`}
       </p>
 
-      {list.length === 0 ? (
+      {!loading && list.length === 0 ? (
         <div className="glass flex flex-col items-center gap-3 rounded-2xl px-6 py-16 text-center">
           <span className="grid size-12 place-items-center rounded-2xl bg-violet/15 text-lavender ring-1 ring-violet/25">
             <FolderOpen aria-hidden className="size-6" />
@@ -112,10 +115,7 @@ export function ProjectsView() {
                     setRenaming(p);
                     setRenameValue(p.name);
                   }}
-                  onDuplicate={() => {
-                    duplicate(p.id);
-                    toast.success(`Duplicated “${p.name}”`);
-                  }}
+                  onDuplicate={() => void duplicate(p)}
                   onDelete={() => setDeleting(p)}
                 />
               </motion.li>
@@ -130,8 +130,7 @@ export function ProjectsView() {
             onSubmit={(e) => {
               e.preventDefault();
               if (!renaming || renameValue.trim().length < 2) return;
-              rename(renaming.id, renameValue.trim());
-              toast.success("Project renamed");
+              void rename(renaming.id, renameValue.trim());
               setRenaming(null);
             }}
             className="grid gap-4"
@@ -158,7 +157,7 @@ export function ProjectsView() {
           <DialogHeader>
             <DialogTitle className="font-heading">Delete project?</DialogTitle>
             <DialogDescription>
-              “{deleting?.name}” will be removed from this browser. This cannot be undone.
+              “{deleting?.name}” and its generated clips, renders and captions will be permanently deleted. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -168,10 +167,7 @@ export function ProjectsView() {
             <Button
               variant="destructive"
               onClick={() => {
-                if (deleting) {
-                  remove(deleting.id);
-                  toast.success(`Deleted “${deleting.name}”`);
-                }
+                if (deleting) void remove(deleting);
                 setDeleting(null);
               }}
             >

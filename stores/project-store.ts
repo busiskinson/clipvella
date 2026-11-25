@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { SAMPLE_PROJECTS } from "@/lib/sample-data";
 import type { AspectRatio, Project, ProjectKind, ProjectSource } from "@/lib/types";
 import { uid } from "@/lib/format";
 
@@ -19,7 +18,7 @@ interface ProjectState {
 export const useProjectStore = create<ProjectState>()(
   persist(
     (set, get) => ({
-      projects: SAMPLE_PROJECTS,
+      projects: [] as Project[],
       createProject: ({ name, kind, aspect }) => {
         const project: Project = {
           id: uid("p"),
@@ -62,7 +61,7 @@ export const useProjectStore = create<ProjectState>()(
           return { projects: [copy, ...s.projects] };
         }),
       deleteProject: (id) => set((s) => ({ projects: s.projects.filter((p) => p.id !== id) })),
-      resetSamples: () => set({ projects: SAMPLE_PROJECTS }),
+      resetSamples: () => set({ projects: [] }),
     }),
     {
       name: "clipforge-projects",

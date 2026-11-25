@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PageContainer, PageHeader, SampleDataNote } from "@/components/common/page";
+import { PageContainer, PageHeader } from "@/components/common/page";
 import { ProjectsView } from "@/components/projects/projects-view";
 import { NewProjectButton } from "@/components/common/new-project-button";
 
@@ -9,7 +9,6 @@ export default function ProjectsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={<SampleDataNote>Sample projects · stored in this browser</SampleDataNote>}
         title="My Projects"
         description="Every clip, edit, caption set and imported video you have made."
         actions={<NewProjectButton />}

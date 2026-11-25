@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CardHeader, GlassCard } from "@/components/common/page";
 import { AspectPicker } from "@/components/common/aspect-picker";
 import { useSettingsStore, type Settings } from "@/stores/settings-store";
-import { useProjectStore } from "@/stores/project-store";
 import { LANGUAGES } from "@/components/clipper/clip-settings";
 
 function ToggleRow({ id, label, description, checked, onChange }: { id: string; label: string; description: string; checked: boolean; onChange: (v: boolean) => void }) {
@@ -74,7 +73,6 @@ const INTEGRATIONS = [
 
 export function SettingsView() {
   const s = useSettingsStore();
-  const resetSamples = useProjectStore((p) => p.resetSamples);
   const update = (patch: Partial<Settings>) => s.update(patch);
 
   return (
@@ -187,17 +185,8 @@ export function SettingsView() {
       </GlassCard>
 
       <GlassCard className="p-5 sm:p-6">
-        <CardHeader icon={Database} title="Local data" description="Projects, download history and settings are stored in this browser." />
+        <CardHeader icon={Database} title="Your data" description="Projects, media, download history and settings are stored in your Supabase project." />
         <div className="mt-5 flex flex-wrap gap-2">
-          <Button
-            variant="glass"
-            onClick={() => {
-              resetSamples();
-              toast.success("Sample projects restored");
-            }}
-          >
-            Restore sample projects
-          </Button>
           <Button
             variant="destructive"
             onClick={() => {

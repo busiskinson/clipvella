@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { PanelLeftClose, PanelLeftOpen, Sparkles } from "lucide-react";
+import { HardDrive, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
 import { NAV_CREATE, NAV_LIBRARY, isActive, type NavItem } from "./nav-items";
 import { Logo } from "./logo";
-import { SAMPLE_USAGE } from "@/lib/sample-data";
+import { useUsage } from "@/lib/data/hooks";
+import { STORAGE_LIMIT_BYTES } from "@/lib/data/usage";
+import { formatBytes } from "@/lib/format";
 
 function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -53,8 +55,9 @@ function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: bo
 }
 
 export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
-  const { used, total } = SAMPLE_USAGE.credits;
-  const pct = Math.round((used / total) * 100);
+  const { data } = useUsage();
+  const used = data?.storage_bytes ?? 0;
+  const pct = Math.min(100, Math.round((used / STORAGE_LIMIT_BYTES) * 100));
 
   return (
     <div className="flex h-full flex-col gap-6">
@@ -74,16 +77,16 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
       {!collapsed && (
         <div className="glass mt-auto rounded-2xl p-4">
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles aria-hidden className="size-4 text-lavender" />
-            Processing credits
+            <HardDrive aria-hidden className="size-4 text-lavender" />
+            Storage used
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {used} of {total} min used · <span className="italic">sample data</span>
+            {data ? `${formatBytes(used)} of ${formatBytes(STORAGE_LIMIT_BYTES)}` : "Loading…"}
           </p>
           <div
             className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.08]"
             role="progressbar"
-            aria-label="Credits used (sample data)"
+            aria-label="Storage used"
             aria-valuenow={pct}
             aria-valuemin={0}
             aria-valuemax={100}

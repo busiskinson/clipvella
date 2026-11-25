@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CornerDownLeft, FileVideo, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useUIStore } from "@/stores/ui-store";
-import { useProjectStore } from "@/stores/project-store";
+import { useProjects } from "@/lib/data/hooks";
 import { ALL_NAV } from "./nav-items";
 import { cn } from "@/lib/utils";
 import { PROJECT_KIND_META } from "@/components/common/project-meta";
@@ -21,7 +21,8 @@ interface Result {
 export function QuickSearch() {
   const open = useUIStore((s) => s.searchOpen);
   const setOpen = useUIStore((s) => s.setSearch);
-  const projects = useProjectStore((s) => s.projects);
+  const { data } = useProjects();
+  const projects = useMemo(() => data ?? [], [data]);
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -44,7 +45,7 @@ export function QuickSearch() {
       id: p.id,
       label: p.name,
       hint: PROJECT_KIND_META[p.kind].label,
-      href: PROJECT_KIND_META[p.kind].href,
+      href: `${PROJECT_KIND_META[p.kind].href}?project=${p.id}`,
       icon: FileVideo,
     }));
     const all = [...pages, ...proj];
