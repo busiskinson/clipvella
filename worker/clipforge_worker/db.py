@@ -79,6 +79,18 @@ class Db:
             q = q.eq(k, v)
         q.execute()
 
+    def asset_in_use(self, asset_id: str, except_project: str | None = None) -> bool:
+        """True if any project uses the asset as its source or on its saved timeline."""
+        q = self.client.table("projects").select("id").eq("source_asset_id", asset_id)
+        if except_project:
+            q = q.neq("id", except_project)
+        if q.limit(1).execute().data:
+            return True
+        q = self.client.table("projects").select("id").contains("timeline", {"media": [{"assetId": asset_id}]})
+        if except_project:
+            q = q.neq("id", except_project)
+        return bool(q.limit(1).execute().data)
+
     def upsert_asset(self, row: dict[str, Any]) -> dict[str, Any]:
         """Insert or refresh a media_assets row keyed by (bucket, path) — re-renders overwrite in place."""
         res = self.client.table("media_assets").upsert(row, on_conflict="bucket,path").execute()

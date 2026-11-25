@@ -54,6 +54,12 @@ begin
     raise exception 'FAIL: B wrote into A storage folder';
   exception when insufficient_privilege then null;
   end;
+  -- media rows must point inside the owner's own folder, and can't be re-pointed later
+  begin
+    insert into public.media_assets (kind, bucket, path) values ('upload', 'uploads', '11111111-1111-1111-1111-111111111111/uploads/x/v.mp4');
+    raise exception 'FAIL: B created an asset row pointing at A storage';
+  exception when check_violation or insufficient_privilege then null;
+  end;
   if (select (public.usage_summary() ->> 'storage_bytes')::bigint) <> 0 then
     raise exception 'FAIL: usage_summary leaks A storage to B';
   end if;

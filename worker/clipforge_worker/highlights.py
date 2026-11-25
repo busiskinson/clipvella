@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 from .ai.base import RawMoment
@@ -55,6 +56,8 @@ def validate_moments(
     ends = [e for _, e in speech] + list(scenes)
     fixed: list[Moment] = []
     for r in raw:
+        if not (math.isfinite(r.start) and math.isfinite(r.end)):
+            continue
         start, end = max(0.0, r.start), min(duration, r.end)
         if not (end > start) or start >= duration:
             continue

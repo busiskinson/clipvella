@@ -79,23 +79,39 @@ def crop_filter(aspect: str, src_w: int, src_h: int) -> str:
     return f"{crop},{scale}" if crop else scale
 
 
-def cut_clip_args(src: Path, dst: Path, start: float, end: float, aspect: str, src_w: int, src_h: int, subtitles: Path | None = None) -> list[str]:
+AUDIO_KBPS = 128
+
+
+def video_kbps_cap(duration: float, max_mb: float | None, audio_kbps: int = AUDIO_KBPS) -> int | None:
+    """Video bitrate (kbps) that keeps a file of this length under ~90% of max_mb, or None if no cap is needed."""
+    if not max_mb or duration <= 0:
+        return None
+    total_kbps = max_mb * 0.9 * 8 * 1024 / duration
+    video = int(total_kbps - audio_kbps)
+    if video >= 8000:
+        return None
+    return max(300, video)
+
+
+def cut_clip_args(src: Path, dst: Path, start: float, end: float, aspect: str, src_w: int, src_h: int, subtitles: Path | None = None, max_mb: float | None = None) -> list[str]:
     vf = crop_filter(aspect, src_w, src_h) + ",setsar=1"
     if subtitles is not None:
         # referenced by bare file name; run() is called with cwd=subtitles.parent (avoids Windows path escaping)
         vf += f",subtitles={subtitles.name}"
+    cap = video_kbps_cap(end - start, max_mb)
+    rate = ["-maxrate", f"{cap}k", "-bufsize", f"{cap * 2}k"] if cap else []
     return [
         ffmpeg_bin() if shutil.which("ffmpeg") else "ffmpeg",
         "-y", "-ss", f"{start:.3f}", "-i", str(src), "-t", f"{max(0.1, end - start):.3f}",
         "-vf", vf,
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", *rate, "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", f"{AUDIO_KBPS}k", "-movflags", "+faststart",
         str(dst),
     ]
 
 
-def cut_clip(src: Path, dst: Path, start: float, end: float, aspect: str, info: MediaInfo, subtitles: Path | None = None) -> Path:
-    args = cut_clip_args(src.resolve(), dst.resolve(), start, end, aspect, info.width, info.height, subtitles)
+def cut_clip(src: Path, dst: Path, start: float, end: float, aspect: str, info: MediaInfo, subtitles: Path | None = None, max_mb: float | None = None) -> Path:
+    args = cut_clip_args(src.resolve(), dst.resolve(), start, end, aspect, info.width, info.height, subtitles, max_mb)
     args[0] = ffmpeg_bin()
     run(args, cwd=subtitles.parent if subtitles else None)
     return dst

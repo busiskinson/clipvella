@@ -78,3 +78,46 @@ def test_loop_marks_failure_with_handler_message():
 
 def test_loop_returns_false_when_queue_empty():
     assert process_one(FakeDb(None), "w1", {}) is False
+
+
+def test_loop_settles_job_state_on_failure():
+    db = FakeDb({"id": "j2", "type": "analyze_and_clip", "project_id": "p1", "input": {"project_id": "p1"}})
+    settled = []
+
+    def boom(job, ctx):
+        raise RuntimeError("boom")
+
+    process_one(db, "w1", {"analyze_and_clip": boom}, settle=lambda d, job: settled.append(job["id"]))
+    assert settled == ["j2"]
+
+
+def test_heartbeat_keeps_running_during_a_slow_step():
+    import time
+
+    beats = []
+
+    class Pulse:
+        def report(self, pct, stage):
+            pass
+
+        def beat(self):
+            beats.append(1)
+
+    def slow(job, ctx):
+        time.sleep(0.35)
+        return {}
+
+    db = FakeDb({"id": "j3", "type": "transcribe", "input": {}})
+    process_one(db, "w1", {"transcribe": slow}, pulse_factory=lambda job_id: Pulse(), heartbeat_seconds=0.05)
+    assert len(beats) >= 3
+    assert db.succeeded == ("j3", {})
+
+
+def test_bitrate_cap_keeps_long_clips_under_limit():
+    from clipforge_worker.media.ffmpeg import video_kbps_cap
+
+    assert video_kbps_cap(10, 50) is None  # short clips need no cap
+    cap = video_kbps_cap(90, 50)
+    assert cap is not None and (cap + 128) * 90 / 8 / 1024 <= 50 * 0.9 + 0.01
+    args = cut_clip_args(Path("s.mp4"), Path("o.mp4"), 0, 90, "9:16", 1920, 1080, max_mb=50)
+    assert args[args.index("-maxrate") + 1] == f"{cap}k"

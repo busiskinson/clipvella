@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..captions import lines_from_words
 from ..loop import JobContext
-from .common import Deps, fetch_source, save_transcript, transcribe_media
+from .common import Deps, fetch_source, gate_speech, save_transcript, transcribe_media
 
 
 def run(job: dict, ctx: JobContext, deps: Deps) -> dict:
@@ -12,10 +12,11 @@ def run(job: dict, ctx: JobContext, deps: Deps) -> dict:
     owner, project_id, asset_id = job["owner_id"], inp["project_id"], inp["asset_id"]
 
     ctx.report(5, "Downloading video")
-    asset, src, info = fetch_source(deps, asset_id, ctx.workdir)
-    ctx.report(20, "Extracting audio")
-    ctx.report(35, "Transcribing speech")
-    transcript, _ = transcribe_media(deps, src, info, ctx.workdir, inp.get("language"))
+    asset, src, info = fetch_source(deps, asset_id, ctx.workdir, owner)
+    ctx.report(20, "Transcribing speech")
+    transcript, wav = transcribe_media(deps, src, info, ctx.workdir, inp.get("language"), want_wav=deps.speech is not None)
+    ctx.report(70, "Checking speech")
+    transcript = gate_speech(transcript, deps.speech(wav) if deps.speech and wav else None)
     if not transcript.words:
         raise RuntimeError("No speech found in this video")
 

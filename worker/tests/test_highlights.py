@@ -49,3 +49,8 @@ def test_sorted_by_score_and_limited_to_count():
     raw = [RawMoment(0.0, 20.0, score=50), RawMoment(31.0, 50.0, score=90), RawMoment(72.0, 95.0, score=70)]
     out = run(raw, count=2)
     assert [m.score for m in out] == [90, 70]
+
+
+def test_non_finite_times_are_dropped():
+    out = run([RawMoment(float("nan"), 30.0, score=99), RawMoment(10.2, float("inf"), score=98), RawMoment(31.0, 50.0, title="ok", score=10)])
+    assert [m.title for m in out] == ["ok"]

@@ -49,6 +49,9 @@ class Storage:
 
     def upload(self, bucket: str, path: str, src: Path, content_type: str) -> int:
         """Uploads (overwriting) and returns the size in bytes."""
+        from .pipelines.common import ensure_fits
+
+        ensure_fits(src)
         data = src.read_bytes()
         self.db.client.storage.from_(bucket).upload(path, data, {"content-type": content_type, "upsert": "true"})
         return len(data)

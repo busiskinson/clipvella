@@ -15,7 +15,7 @@ from ..loop import JobContext
 from ..media import ffmpeg
 from ..media.ffmpeg import OUTPUT_SIZE
 from ..storage import render_path
-from .common import Deps
+from .common import Deps, max_upload_mb, owned_asset
 
 FPS_DEFAULT = 30
 
@@ -33,7 +33,7 @@ def _atempo(speed: float) -> str:
     return ",".join(stages)
 
 
-def segment_args(src: Path, dst: Path, source_in: float, duration: float, props: dict, aspect: str, size: tuple[int, int], fps: int, src_w: int, src_h: int, has_audio: bool) -> list[str]:
+def segment_args(src: Path, dst: Path, source_in: float, duration: float, props: dict, aspect: str, size: tuple[int, int], fps: int, src_w: int, src_h: int, has_audio: bool, video_kbps: int | None = None) -> list[str]:
     """One normalised segment: trimmed, speed-adjusted, colour-adjusted, cropped to the canvas, with audio."""
     speed = float(props.get("speed", 1) or 1)
     src_len = duration * speed
@@ -46,7 +46,9 @@ def segment_args(src: Path, dst: Path, source_in: float, duration: float, props:
         args += ["-f", "lavfi", "-t", f"{duration:.3f}", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"]
     af = f"{_atempo(speed)},volume={vol:.3f},aresample=48000" if has_audio else "anull"
     args += ["-vf", vf, "-af", af, "-map", "0:v:0", "-map", "0:a:0" if has_audio else "1:a:0", "-t", f"{duration:.3f}",
-             "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-s", f"{w}x{h}",
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+             *(["-maxrate", f"{video_kbps}k", "-bufsize", f"{video_kbps * 2}k"] if video_kbps else []),
+             "-pix_fmt", "yuv420p", "-s", f"{w}x{h}",
              "-c:a", "aac", "-b:a", "160k", "-ac", "2", "-ar", "48000", str(dst)]
     return args
 
@@ -100,10 +102,12 @@ def run(job: dict, ctx: JobContext, deps: Deps) -> dict:
     sources: dict[str, tuple[Path, ffmpeg.MediaInfo]] = {}
     for c, m, _ in video_clips + music_clips:
         if m["assetId"] not in sources:
-            asset = deps.db.one("media_assets", m["assetId"])
+            asset = owned_asset(deps, m["assetId"], owner)
             path = deps.storage.download(asset["bucket"], asset["path"], ctx.workdir / f"src-{m['assetId']}{Path(asset['path']).suffix or '.mp4'}")
             sources[m["assetId"]] = (path, ffmpeg.probe(path))
 
+    total = max((c["start"] + c["duration"] for c, _, _ in video_clips), default=0.0)
+    cap = ffmpeg.video_kbps_cap(total, max_upload_mb(), audio_kbps=192)
     pieces: list[Path] = []
     cursor = 0.0
     video_clips.sort(key=lambda x: x[0]["start"])
@@ -118,7 +122,7 @@ def run(job: dict, ctx: JobContext, deps: Deps) -> dict:
         props = dict(c.get("props") or {})
         if track.get("muted"):
             props["volume"] = 0
-        ffmpeg.run(segment_args(src, seg, float(c["sourceIn"]), float(c["duration"]), props, aspect, size, fps, info.width, info.height, info.has_audio))
+        ffmpeg.run(segment_args(src, seg, float(c["sourceIn"]), float(c["duration"]), props, aspect, size, fps, info.width, info.height, info.has_audio, cap))
         pieces.append(seg)
         cursor = max(cursor, c["start"] + c["duration"])
 

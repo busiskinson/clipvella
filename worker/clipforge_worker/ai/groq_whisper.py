@@ -11,7 +11,8 @@ from ..config import require
 from .base import Segment, Transcript, Word
 
 ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
-MAX_REQUEST_BYTES = 24 * 1024 * 1024  # free tier allows 25 MB; keep headroom
+MAX_REQUEST_BYTES = 24 * 1024 * 1024
+NO_SPEECH_PROB = 0.6  # segments Whisper itself flags as probably not speech are dropped  # free tier allows 25 MB; keep headroom
 CHUNK_SECONDS = 1800.0  # 30 min of 24 kbps opus ≈ 5.4 MB
 OVERLAP_SECONDS = 2.0
 
@@ -85,8 +86,14 @@ class GroqWhisper:
         for offset, path in chunks:
             body = self._request(path, language)
             detected = detected or body.get("language")
-            word_chunks.append((offset, [Word(w.get("word", "").strip(), float(w["start"]), float(w["end"])) for w in body.get("words") or []]))
-            seg_chunks.append((offset, [Segment(s.get("text", "").strip(), float(s["start"]), float(s["end"])) for s in body.get("segments") or []]))
+            segs = body.get("segments") or []
+            silent = [(float(s["start"]), float(s["end"])) for s in segs if float(s.get("no_speech_prob", 0) or 0) > NO_SPEECH_PROB]
+
+            def in_silent(t: float, silent=silent) -> bool:
+                return any(a <= t < b for a, b in silent)
+
+            word_chunks.append((offset, [Word(w.get("word", "").strip(), float(w["start"]), float(w["end"])) for w in body.get("words") or [] if not in_silent(float(w["start"]))]))
+            seg_chunks.append((offset, [Segment(s.get("text", "").strip(), float(s["start"]), float(s["end"])) for s in segs if float(s.get("no_speech_prob", 0) or 0) <= NO_SPEECH_PROB]))
         words = [w for w in merge_chunks(word_chunks) if w.text]
         return Transcript(words=words, segments=_segments_merge(seg_chunks), language=detected, provider=self.provider, model=self.model)
 

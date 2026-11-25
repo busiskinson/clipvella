@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -24,8 +25,55 @@ class Deps:
     scenes: Callable[[Path], list[float]] | None = None
 
 
-def fetch_source(deps: Deps, asset_id: str, workdir: Path) -> tuple[dict, Path, MediaInfo]:
+def max_upload_mb() -> float:
+    """Must match the storage bucket file_size_limit (50 MB on the Supabase free plan)."""
+    try:
+        return float(os.environ.get("WORKER_MAX_UPLOAD_MB", "50"))
+    except ValueError:
+        return 50.0
+
+
+def ensure_fits(path: Path) -> None:
+    """Fails with a plain message before uploading something the bucket would reject."""
+    limit = max_upload_mb()
+    size_mb = path.stat().st_size / 1024 / 1024
+    if size_mb > limit:
+        raise RuntimeError(f"The rendered file is {size_mb:.1f} MB, larger than the {limit:g} MB storage limit. Try 720p or a shorter clip.")
+
+
+SPEECH_MARGIN = 0.3
+
+
+def gate_speech(transcript: Transcript, speech: list[tuple[float, float]] | None) -> Transcript:
+    """Drops words Whisper produced outside detected speech (it can hallucinate on silence or noise).
+
+    `speech is None` means no VAD is available, so the transcript is kept as is.
+    """
+    if speech is None:
+        return transcript
+    if not speech:
+        raise RuntimeError("No speech found in this video")
+
+    def inside(start: float, end: float) -> bool:
+        return any(start < e + SPEECH_MARGIN and end > s - SPEECH_MARGIN for s, e in speech)
+
+    transcript.words = [w for w in transcript.words if inside(w.start, w.end)]
+    transcript.segments = [s for s in transcript.segments if inside(s.start, s.end)]
+    if not transcript.words:
+        raise RuntimeError("No speech found in this video")
+    return transcript
+
+
+def owned_asset(deps: Deps, asset_id: str, owner_id: str) -> dict:
+    """Loads a media row and refuses it unless it belongs to the job's owner (the worker runs as service role)."""
     asset = deps.db.one("media_assets", asset_id)
+    if asset.get("owner_id") != owner_id or not str(asset.get("path", "")).startswith(f"{owner_id}/"):
+        raise RuntimeError("That media file doesn't belong to this job's owner.")
+    return asset
+
+
+def fetch_source(deps: Deps, asset_id: str, workdir: Path, owner_id: str) -> tuple[dict, Path, MediaInfo]:
+    asset = owned_asset(deps, asset_id, owner_id)
     suffix = Path(asset.get("file_name") or asset["path"]).suffix or ".mp4"
     src = deps.storage.download(asset["bucket"], asset["path"], workdir / f"source{suffix}")
     info = ffmpeg.probe(src)
