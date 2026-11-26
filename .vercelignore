@@ -1,0 +1,13 @@
+# Only the Next.js app is deployed. Secrets and the local worker never leave this PC.
+# Leading "/" = project root only (so lib/supabase/ is kept).
+.env
+.env.*
+!.env.example
+/worker/
+/supabase/
+/docs/
+/design-system/
+/.superpowers/
+/.claude/
+node_modules/
+/.next/
