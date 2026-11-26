@@ -46,7 +46,7 @@ def capabilities() -> dict[str, bool]:
         caps["ffmpeg"] = True
     except RuntimeError:
         caps["ffmpeg"] = False
-    for name, mod in (("vad", "silero_vad"), ("scenedetect", "scenedetect")):
+    for name, mod in (("vad", "silero_vad"), ("scenedetect", "scenedetect"), ("ytdlp", "yt_dlp")):
         try:
             __import__(mod)
             caps[name] = True

@@ -10,6 +10,7 @@ dependencies = [
   "scenedetect[opencv-headless]>=0.6.4",
   "silero-vad>=5.1",
   "numpy>=1.26",
+  "yt-dlp>=2025.1",
 ]
 
 [dependency-groups]

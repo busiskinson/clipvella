@@ -56,6 +56,10 @@ def settle_job(db: Any, job: dict[str, Any]) -> None:
                     c["id"],
                     {"status": "ready" if c.get("output_asset_id") else "failed", "error": "The re-render didn't finish; the previous version is kept."},
                 )
+        if project_id and job["type"] == "import_url":
+            p = db.one("projects", project_id)
+            if p and p.get("status") == "processing" and not p.get("source_asset_id"):
+                db.update("projects", project_id, {"status": "draft"})
         if project_id and job["type"] in ("analyze_and_clip", "transcribe"):
             p = db.one("projects", project_id)
             if p and p.get("status") == "processing":

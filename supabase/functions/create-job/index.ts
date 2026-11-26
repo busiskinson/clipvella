@@ -7,8 +7,9 @@
  * No processing happens here.
  */
 import { adminClient, callerId, corsHeaders, json } from "../_shared/http.ts";
+import { parseVideoLink } from "../_shared/platforms.ts";
 
-type JobType = "analyze_and_clip" | "render_clip" | "transcribe" | "render_export";
+type JobType = "analyze_and_clip" | "render_clip" | "transcribe" | "render_export" | "import_url";
 type Fail = { ok: false; code: "forbidden" | "invalid" | "storage_full" | "unauthorized" | "server"; message: string };
 
 const ASPECTS = ["9:16", "1:1", "4:5", "16:9"];
@@ -66,6 +67,13 @@ function validate(type: JobType, input: Record<string, unknown>): { ok: true; in
       if (!["720p", "1080p"].includes(String(input.resolution))) return bad("resolution must be 720p or 1080p.");
       if (![24, 30, 60].includes(Number(input.fps))) return bad("fps must be 24, 30 or 60.");
       return { ok: true, input: { project_id: input.project_id, format: input.format, resolution: input.resolution, fps: Number(input.fps) } };
+    }
+    case "import_url": {
+      if (!isUuid(input.project_id)) return bad("project_id is required.");
+      if (input.rights_confirmed !== true) return bad("Confirm that you own this video or have permission to use it.");
+      const link = parseVideoLink(String(input.url ?? ""));
+      if (!link.ok) return bad(link.message);
+      return { ok: true, input: { project_id: input.project_id, url: link.url, platform: link.platform, rights_confirmed: true } };
     }
     default:
       return bad("Unknown job type.");
@@ -138,7 +146,7 @@ async function handle(req: Request): Promise<Response> {
     .single();
   if (error) return json({ ok: false, code: "server", message: error.message } satisfies Fail, 500);
   // only long analyses mark the project busy; the worker settles it back on success, failure or cancel
-  if (projectId && (body.type === "analyze_and_clip" || body.type === "transcribe")) {
+  if (projectId && (body.type === "analyze_and_clip" || body.type === "transcribe" || body.type === "import_url")) {
     await db.from("projects").update({ status: "processing" }).eq("id", projectId);
   }
   return json({ ok: true, job });

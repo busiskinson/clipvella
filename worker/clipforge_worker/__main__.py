@@ -22,7 +22,7 @@ def main() -> int:
 
     caps = {**capabilities(), "keys": keys_configured()}
     if args.check:
-        for name in ("ffmpeg", "vad", "scenedetect"):
+        for name in ("ffmpeg", "vad", "scenedetect", "ytdlp"):
             print(f"{name:12} {'OK' if caps[name] else 'MISSING'}")
         for name, ok in caps["keys"].items():
             print(f"{name + ' key':12} {'set' if ok else 'not set'}")
@@ -33,7 +33,8 @@ def main() -> int:
     from .db import Db
     from .loop import run_forever
     from .media.analysis import scene_cuts, speech_segments
-    from .pipelines import clips, export, transcribe
+    from .media.fetch import YtDlpFetcher
+    from .pipelines import clips, export, import_url, transcribe
     from .pipelines.common import Deps
     from .storage import Storage
 
@@ -46,12 +47,14 @@ def main() -> int:
         highlights=GeminiHighlights([cfg.gemini_model, *[m for m in cfg.gemini_fallbacks if m != cfg.gemini_model]]),
         speech=speech_segments if caps["vad"] else None,
         scenes=scene_cuts if caps["scenedetect"] else None,
+        fetcher=YtDlpFetcher() if caps["ytdlp"] else None,
     )
     handlers = {
         "transcribe": lambda job, ctx: transcribe.run(job, ctx, deps),
         "analyze_and_clip": lambda job, ctx: clips.run_analyze(job, ctx, deps),
         "render_clip": lambda job, ctx: clips.run_render_clip(job, ctx, deps),
         "render_export": lambda job, ctx: export.run(job, ctx, deps),
+        "import_url": lambda job, ctx: import_url.run(job, ctx, deps),
     }
     try:
         run_forever(db, cfg, handlers, caps)

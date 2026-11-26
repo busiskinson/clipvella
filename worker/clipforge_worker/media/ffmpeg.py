@@ -143,3 +143,25 @@ def split_audio(src: Path, duration: float, chunk: float, overlap: float, outdir
 def thumbnail(src: Path, dst: Path, at: float, width: int = 480) -> Path:
     run([ffmpeg_bin(), "-y", "-ss", f"{max(0.0, at):.3f}", "-i", str(src), "-frames:v", "1", "-vf", f"scale={width}:-2", "-q:v", "3", str(dst)])
     return dst
+
+
+def fit_video_args(src: Path, dst: Path, duration: float, max_mb: float, max_height: int = 720) -> list[str]:
+    """Re-encodes to H.264/AAC MP4 at most max_height tall, with a bitrate that keeps the file under max_mb."""
+    cap = video_kbps_cap(duration, max_mb) or 4000
+    audio = AUDIO_KBPS if cap > 600 else 64
+    cap = video_kbps_cap(duration, max_mb, audio) or cap
+    return [
+        ffmpeg_bin() if shutil.which("ffmpeg") else "ffmpeg",
+        "-y", "-i", str(src),
+        "-vf", f"scale=-2:'min({max_height},ih)',setsar=1",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-maxrate", f"{cap}k", "-bufsize", f"{cap * 2}k", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", f"{audio}k", "-movflags", "+faststart",
+        str(dst),
+    ]
+
+
+def fit_video(src: Path, dst: Path, duration: float, max_mb: float, max_height: int = 720) -> Path:
+    args = fit_video_args(src, dst, duration, max_mb, max_height)
+    args[0] = ffmpeg_bin()
+    run(args)
+    return dst

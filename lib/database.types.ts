@@ -8,7 +8,7 @@ type Enums_ = {
   asset_status: "uploading" | "ready" | "failed";
   clip_status: "pending" | "rendering" | "ready" | "failed";
   job_status: "queued" | "running" | "succeeded" | "failed" | "canceled";
-  job_type: "analyze_and_clip" | "render_clip" | "transcribe" | "render_export";
+  job_type: "analyze_and_clip" | "render_clip" | "transcribe" | "render_export" | "import_url";
   project_kind: "clip" | "edit" | "captions" | "import";
   project_status: "draft" | "processing" | "ready";
 };

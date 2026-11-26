@@ -23,6 +23,7 @@ class Deps:
     highlights: HighlightModel | None = None
     speech: Callable[[Path], list[tuple[float, float]]] | None = None
     scenes: Callable[[Path], list[float]] | None = None
+    fetcher: Any = None  # downloads a platform link (yt-dlp); None when unavailable
 
 
 def max_upload_mb() -> float:

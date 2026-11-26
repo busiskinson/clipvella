@@ -36,6 +36,14 @@ uv run python -m clipforge_worker           # process jobs until you press Ctrl+
 The app shows "Waiting for the worker" on queued jobs while it isn't running; jobs start as soon as it is.
 Jobs whose worker stops mid-way are retried (up to 3 attempts) after 10 minutes.
 
+## Link import (Clipper → Paste link)
+
+The worker downloads a TikTok, YouTube or Facebook video with yt-dlp after you confirm you own it or have permission.
+Only public videos are imported: private, login-only, paid, live and DRM-protected videos are refused, as are videos
+longer than `WORKER_MAX_IMPORT_MINUTES` (default 10). Files are re-encoded to ≤720p to fit the 50 MB storage limit.
+No browser cookies or accounts are used. Platforms change often; if imports start failing, update yt-dlp:
+`uv lock --upgrade-package yt-dlp`.
+
 ## Tests
 
 ```powershell

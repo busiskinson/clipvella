@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileVideo, FolderOpen, Loader2, Replace, UploadCloud } from "lucide-react";
+import { FileVideo, FolderOpen, Link2, Loader2, Replace, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LinkImport } from "./link-import";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CardHeader, GlassCard } from "@/components/common/page";
 import { MAX_UPLOAD_MB, validateVideo } from "@/lib/upload";
@@ -19,6 +21,8 @@ export function SourcePanel({
   uploadPct,
   onFile,
   onPick,
+  onLink,
+  importing,
 }: {
   project: ProjectRow | null;
   asset: AssetRow | null;
@@ -27,12 +31,15 @@ export function SourcePanel({
   uploadPct: number | null;
   onFile: (file: File) => void;
   onPick: (projectId: string) => void;
+  onLink: (url: string) => Promise<void>;
+  importing: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [changing, setChanging] = useState(false);
   const uploading = uploadPct !== null;
+  const [mode, setMode] = useState<"file" | "link">(project?.link && !asset ? "link" : "file");
 
   const accept = (file: File | undefined) => {
     if (!file) return;
@@ -43,8 +50,7 @@ export function SourcePanel({
     onFile(file);
   };
 
-  const picker = (
-    <div className="grid gap-4">
+  const dropZone = (
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -100,7 +106,25 @@ export function SourcePanel({
           </p>
         )}
       </div>
-      {candidates.length > 0 && !uploading && (
+  );
+
+  const picker = (
+    <div className="grid gap-4">
+      <Tabs value={mode} onValueChange={(v) => setMode(v as "file" | "link")} className="gap-4">
+        <TabsList className="grid h-10 w-full grid-cols-2 bg-black/25 p-1 sm:w-80">
+          <TabsTrigger value="file" disabled={importing}>
+            <UploadCloud aria-hidden /> Upload file
+          </TabsTrigger>
+          <TabsTrigger value="link" disabled={uploading}>
+            <Link2 aria-hidden /> Paste link
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="file">{dropZone}</TabsContent>
+        <TabsContent value="link">
+          <LinkImport onImport={onLink} busy={importing} initialUrl={(project?.link as { url?: string } | null)?.url ?? ""} />
+        </TabsContent>
+      </Tabs>
+      {candidates.length > 0 && !uploading && !importing && (
         <div className="grid gap-1.5">
           <label htmlFor="clip-from-project" className="flex items-center gap-2 text-sm font-medium">
             <FolderOpen aria-hidden className="size-4 text-lavender" /> Or use a video from your projects
@@ -157,11 +181,11 @@ export function SourcePanel({
               </Button>
             </div>
           </div>
-        ) : project?.link && !asset ? (
+        ) : project?.link && !asset && !importing ? (
           <div className="grid gap-4">
             <p className="rounded-xl border border-warning/25 bg-warning/[0.07] p-3 text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{project.name}</span> is a linked video. There&apos;s no authorized way to fetch its
-              file, so upload your own copy to clip it.
+              <span className="font-medium text-foreground">{project.name}</span> is a linked video without a file yet. Import it from the link
+              (if you own it or have permission) or upload your own copy.
             </p>
             {picker}
           </div>
