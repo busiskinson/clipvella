@@ -1,5 +1,5 @@
 /**
- * Storage path conventions (shared with the worker — keep in sync with worker/clipforge_worker/storage.py).
+ * Storage path conventions (shared with the worker — keep in sync with worker/clipvella_worker/storage.py).
  * Every object path starts with the owner's user id so storage RLS can scope access.
  *
  *   uploads/{uid}/uploads/{assetId}/{fileName}           original videos

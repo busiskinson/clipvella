@@ -1,7 +1,7 @@
 [project]
-name = "clipforge-worker"
+name = "clipvella-worker"
 version = "0.1.0"
-description = "ClipForge AI background worker: FFmpeg, Silero VAD, PySceneDetect, Groq Whisper, Gemini"
+description = "Clipvella background worker: FFmpeg, Silero VAD, PySceneDetect, Groq Whisper, Gemini"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "supabase>=2.10",

@@ -1,7 +1,7 @@
 import pytest
 
-from clipforge_worker.ai.base import RawMoment
-from clipforge_worker.highlights import NoUsableMoments, validate_moments
+from clipvella_worker.ai.base import RawMoment
+from clipvella_worker.highlights import NoUsableMoments, validate_moments
 
 SPEECH = [(0.0, 9.0), (10.2, 30.0), (31.0, 70.0), (72.0, 119.0)]
 

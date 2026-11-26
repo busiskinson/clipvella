@@ -97,7 +97,7 @@ function AiServices() {
       </ul>
       {!w.lastSeen && (
         <p className="mt-3 text-xs text-muted-foreground">
-          Start the worker with <code className="rounded bg-black/30 px-1">uv run python -m clipforge_worker</code> in the <code>worker</code> folder.
+          Start the worker with <code className="rounded bg-black/30 px-1">uv run python -m clipvella_worker</code> in the <code>worker</code> folder.
         </p>
       )}
     </GlassCard>

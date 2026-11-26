@@ -7,11 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from clipforge_worker.ai.base import RawMoment, Segment, Transcript, Word
-from clipforge_worker.loop import JobContext
-from clipforge_worker.media import ffmpeg
-from clipforge_worker.pipelines import clips, transcribe
-from clipforge_worker.pipelines.common import Deps
+from clipvella_worker.ai.base import RawMoment, Segment, Transcript, Word
+from clipvella_worker.loop import JobContext
+from clipvella_worker.media import ffmpeg
+from clipvella_worker.pipelines import clips, transcribe
+from clipvella_worker.pipelines.common import Deps
 
 try:
     FFMPEG = ffmpeg.ffmpeg_bin()
@@ -83,7 +83,7 @@ class FakeStorage:
         return dest
 
     def upload(self, bucket, path, src, content_type):
-        from clipforge_worker.pipelines.common import ensure_fits
+        from clipvella_worker.pipelines.common import ensure_fits
 
         ensure_fits(src)
         self.objects[(bucket, path)] = src.stat().st_size
@@ -156,7 +156,7 @@ def test_transcribe_writes_caption_lines(tmp_path, test_video):
 
 @needs_ffmpeg
 def test_export_concat_two_trims(tmp_path, test_video):
-    from clipforge_worker.pipelines import export
+    from clipvella_worker.pipelines import export
 
     db, deps, _, ctx, project = setup(tmp_path, test_video, WORDS, [])
     asset_id = next(iter(db.tables["media_assets"]))
@@ -239,7 +239,7 @@ def test_render_clip_applies_new_times_on_success(tmp_path, test_video):
 
 @needs_ffmpeg
 def test_settle_unsticks_clips_and_project_after_failure(tmp_path, test_video):
-    from clipforge_worker.loop import settle_job
+    from clipvella_worker.loop import settle_job
 
     db, deps, ctx, project, clip = _analyzed(tmp_path, test_video)
     db.update("clips", clip["id"], {"status": "rendering"})

@@ -1,4 +1,4 @@
-"""Entry point: `uv run python -m clipforge_worker` (run) or `... --check` (diagnostics)."""
+"""Entry point: `uv run python -m clipvella_worker` (run) or `... --check` (diagnostics)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .config import Config, keys_configured
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="clipforge_worker")
+    parser = argparse.ArgumentParser(prog="clipvella_worker")
     parser.add_argument("--check", action="store_true", help="print available tools and which keys are set, then exit")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -59,7 +59,7 @@ def main() -> int:
     try:
         run_forever(db, cfg, handlers, caps)
     except KeyboardInterrupt:
-        logging.getLogger("clipforge.worker").info("Worker stopped.")
+        logging.getLogger("clipvella.worker").info("Worker stopped.")
     return 0
 
 

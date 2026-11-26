@@ -14,7 +14,7 @@ from typing import Any, Callable, Protocol
 
 from .db import JobCanceled
 
-log = logging.getLogger("clipforge.worker")
+log = logging.getLogger("clipvella.worker")
 
 
 class JobDb(Protocol):
@@ -81,7 +81,7 @@ def process_one(
     if not job:
         return False
     job_id = job["id"]
-    workdir = Path(tempfile.mkdtemp(prefix=f"clipforge-{job_id[:8]}-"))
+    workdir = Path(tempfile.mkdtemp(prefix=f"clipvella-{job_id[:8]}-"))
     pulse = pulse_factory(job_id) if pulse_factory else None
     stop = threading.Event()
     beater = None

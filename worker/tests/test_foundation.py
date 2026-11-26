@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from clipforge_worker.ai.base import Word
-from clipforge_worker.ai.groq_whisper import merge_chunks
-from clipforge_worker.config import MissingConfig, require
-from clipforge_worker.loop import process_one
-from clipforge_worker.media.ffmpeg import cut_clip_args
+from clipvella_worker.ai.base import Word
+from clipvella_worker.ai.groq_whisper import merge_chunks
+from clipvella_worker.config import MissingConfig, require
+from clipvella_worker.loop import process_one
+from clipvella_worker.media.ffmpeg import cut_clip_args
 
 
 def test_chunk_offsets_and_overlap_dedup():
@@ -114,7 +114,7 @@ def test_heartbeat_keeps_running_during_a_slow_step():
 
 
 def test_bitrate_cap_keeps_long_clips_under_limit():
-    from clipforge_worker.media.ffmpeg import video_kbps_cap
+    from clipvella_worker.media.ffmpeg import video_kbps_cap
 
     assert video_kbps_cap(10, 50) is None  # short clips need no cap
     cap = video_kbps_cap(90, 50)
@@ -126,7 +126,7 @@ def test_bitrate_cap_keeps_long_clips_under_limit():
 def test_groq_request_is_valid_multipart(tmp_path):
     import httpx
 
-    from clipforge_worker.ai.groq_whisper import GroqWhisper
+    from clipvella_worker.ai.groq_whisper import GroqWhisper
 
     seen = {}
 
@@ -154,8 +154,8 @@ def _gemini_ok():
 def test_gemini_falls_back_when_a_model_is_overloaded_or_hangs():
     import httpx
 
-    from clipforge_worker.ai.base import Segment, Transcript
-    from clipforge_worker.ai.gemini import GeminiHighlights
+    from clipvella_worker.ai.base import Segment, Transcript
+    from clipvella_worker.ai.gemini import GeminiHighlights
 
     calls = []
 
@@ -180,8 +180,8 @@ def test_gemini_reports_overload_when_every_model_fails():
     import httpx
     import pytest as _pytest
 
-    from clipforge_worker.ai.base import Transcript
-    from clipforge_worker.ai.gemini import GeminiHighlights
+    from clipvella_worker.ai.base import Transcript
+    from clipvella_worker.ai.gemini import GeminiHighlights
 
     client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(503, json={"error": {"message": "high demand"}})))
     g = GeminiHighlights(["a", "b"], api_key="k", client=client, backoff=(0,))

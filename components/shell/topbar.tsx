@@ -48,7 +48,7 @@ export function Topbar() {
         <Logo collapsed />
       </div>
       <p className="hidden truncate font-heading text-[15px] font-medium text-muted-foreground lg:block">
-        {current?.label ?? "ClipForge AI"}
+        {current?.label ?? "Clipvella"}
       </p>
 
       <button

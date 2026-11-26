@@ -1,4 +1,4 @@
-# ClipForge AI — Design System (MASTER)
+# Clipvella — Design System (MASTER)
 
 Source of truth for every page. Page-specific overrides live in `pages/<page>.md`
 (none yet). Derived from UI UX Pro Max (`--design-system`, `--domain style|typography|ux`,

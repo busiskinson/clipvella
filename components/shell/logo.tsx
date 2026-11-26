@@ -23,12 +23,12 @@ export function Logo({ collapsed = false }: { collapsed?: boolean }) {
     <Link
       href="/"
       className="flex items-center gap-3 rounded-xl outline-offset-4"
-      aria-label="ClipForge AI home"
+      aria-label="Clipvella home"
     >
       <LogoMark />
       {!collapsed && (
         <span className="font-heading text-[17px] font-semibold tracking-tight">
-          ClipForge <span className="text-lavender">AI</span>
+          Clip<span className="text-lavender">vella</span>
         </span>
       )}
     </Link>

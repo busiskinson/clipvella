@@ -8,7 +8,7 @@ const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], display
 const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "ClipForge AI", template: "%s · ClipForge AI" },
+  title: { default: "Clipvella", template: "%s · Clipvella" },
   description: "AI-powered clipping, editing, captions and video import for short-form video.",
 };
 

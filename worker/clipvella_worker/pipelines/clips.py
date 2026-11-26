@@ -14,7 +14,7 @@ from ..media.ffmpeg import OUTPUT_SIZE, MediaInfo
 from ..storage import clip_thumb_path, clip_video_path
 from .common import Deps, fetch_source, gate_speech, load_transcript, max_upload_mb, save_transcript, transcribe_media
 
-log = logging.getLogger("clipforge.clips")
+log = logging.getLogger("clipvella.clips")
 
 LENGTH_RANGE = {"auto": (15.0, 60.0), "15-30": (15.0, 30.0), "30-60": (30.0, 60.0), "60-90": (60.0, 90.0)}
 

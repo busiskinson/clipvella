@@ -15,7 +15,7 @@ ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:gene
 MAX_TRANSCRIPT_CHARS = 180_000
 REQUEST_TIMEOUT = 60.0
 
-log = logging.getLogger("clipforge.gemini")
+log = logging.getLogger("clipvella.gemini")
 
 SCHEMA = {
     "type": "OBJECT",

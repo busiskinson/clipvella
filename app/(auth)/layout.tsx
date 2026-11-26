@@ -10,7 +10,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           <div className="mb-6 flex items-center gap-3">
             <LogoMark />
             <span className="font-heading text-[17px] font-semibold tracking-tight">
-              ClipForge <span className="text-lavender">AI</span>
+              Clip<span className="text-lavender">vella</span>
             </span>
           </div>
           {/* useSearchParams in the form needs a Suspense boundary under cacheComponents */}

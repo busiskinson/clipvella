@@ -172,7 +172,7 @@ export function DownloaderView() {
         <div aria-hidden className="pointer-events-none absolute -top-28 left-1/2 size-96 -translate-x-1/2 rounded-full bg-violet/20 blur-3xl" />
         <div className="relative mx-auto max-w-3xl">
           <h2 className="text-center text-2xl font-semibold text-balance sm:text-3xl">
-            Bring any video into <span className="text-gradient">ClipForge</span>
+            Bring any video into <span className="text-gradient">Clipvella</span>
           </h2>
           <p className="mx-auto mt-2 mb-6 max-w-xl text-center text-[15px] text-muted-foreground text-pretty">
             Paste a TikTok, YouTube or Facebook Reels link to check it and save it to your projects, or import your own video file.

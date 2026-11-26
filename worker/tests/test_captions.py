@@ -1,5 +1,5 @@
-from clipforge_worker.ai.base import Word
-from clipforge_worker.captions import lines_from_words, to_ass
+from clipvella_worker.ai.base import Word
+from clipvella_worker.captions import lines_from_words, to_ass
 
 
 def make_words(n, gap=0.3, dur=0.25, text="word"):

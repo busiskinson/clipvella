@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from clipforge_worker.loop import JobContext, settle_job
-from clipforge_worker.media import ffmpeg
-from clipforge_worker.pipelines import import_url
-from clipforge_worker.pipelines.common import Deps
+from clipvella_worker.loop import JobContext, settle_job
+from clipvella_worker.media import ffmpeg
+from clipvella_worker.pipelines import import_url
+from clipvella_worker.pipelines.common import Deps
 from test_pipelines import FakeDb, FakeStorage, needs_ffmpeg, test_video  # noqa: F401 — test_video is a fixture
 
 URL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"

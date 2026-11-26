@@ -1,4 +1,4 @@
-# ClipForge worker
+# Clipvella worker
 
 Runs the long jobs the web app queues in Supabase (`public.jobs`): transcription (Groq Whisper),
 highlight detection (Gemini), speech detection (Silero VAD), scene detection (PySceneDetect) and all
@@ -29,8 +29,8 @@ copy .env.example .env   # then fill in the keys below
 
 ```powershell
 cd worker
-uv run python -m clipforge_worker --check   # tools + which keys are set
-uv run python -m clipforge_worker           # process jobs until you press Ctrl+C
+uv run python -m clipvella_worker --check   # tools + which keys are set
+uv run python -m clipvella_worker           # process jobs until you press Ctrl+C
 ```
 
 The app shows "Waiting for the worker" on queued jobs while it isn't running; jobs start as soon as it is.
@@ -52,5 +52,5 @@ uv run pytest -q
 
 ## Swapping providers
 
-`clipforge_worker/ai/base.py` defines `Transcriber` and `HighlightModel`. Add an implementation next to
+`clipvella_worker/ai/base.py` defines `Transcriber` and `HighlightModel`. Add an implementation next to
 `groq_whisper.py` / `gemini.py` and pass it in `__main__.py`.

@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* ClipForge AI is dark-only. See design-system/clipforge-ai/MASTER.md */
+/* Clipvella is dark-only. See design-system/clipvella/MASTER.md */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

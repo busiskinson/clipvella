@@ -8,7 +8,7 @@ import { getProjectRow, signedUrls, updateProject, type AssetRow } from "./proje
 
 /**
  * What the editor saves in projects.timeline. Read by the worker's render_export pipeline
- * (worker/clipforge_worker/pipelines/export.py) — keep both in sync.
+ * (worker/clipvella_worker/pipelines/export.py) — keep both in sync.
  * Media is stored by reference (assetId); signed URLs are created fresh on every load.
  */
 export interface TimelineSnapshot {

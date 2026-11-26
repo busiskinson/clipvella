@@ -62,7 +62,7 @@ export function JobProgress({ job, onRetry, className }: { job: JobRow | null; o
       {waiting && (
         <p className="text-xs text-muted-foreground">
           The worker on your PC isn&apos;t running (last seen {lastSeenLabel(worker.lastSeen)}). Start it with{" "}
-          <code className="rounded bg-black/30 px-1 py-0.5">uv run python -m clipforge_worker</code> in the <code>worker</code> folder. The job
+          <code className="rounded bg-black/30 px-1 py-0.5">uv run python -m clipvella_worker</code> in the <code>worker</code> folder. The job
           will start automatically.
         </p>
       )}
