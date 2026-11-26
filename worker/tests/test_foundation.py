@@ -121,3 +121,69 @@ def test_bitrate_cap_keeps_long_clips_under_limit():
     assert cap is not None and (cap + 128) * 90 / 8 / 1024 <= 50 * 0.9 + 0.01
     args = cut_clip_args(Path("s.mp4"), Path("o.mp4"), 0, 90, "9:16", 1920, 1080, max_mb=50)
     assert args[args.index("-maxrate") + 1] == f"{cap}k"
+
+
+def test_groq_request_is_valid_multipart(tmp_path):
+    import httpx
+
+    from clipforge_worker.ai.groq_whisper import GroqWhisper
+
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = request.read().decode("latin-1")
+        seen["body"] = body
+        return httpx.Response(200, json={"language": "en", "words": [{"word": "hi", "start": 0.1, "end": 0.4}], "segments": [{"text": "hi", "start": 0.1, "end": 0.4, "no_speech_prob": 0.01}]})
+
+    audio = tmp_path / "a.ogg"
+    audio.write_bytes(b"OggS" + b"\0" * 100)
+    g = GroqWhisper("whisper-large-v3-turbo", api_key="test", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    t = g.transcribe(audio, "en")
+    assert [w.text for w in t.words] == ["hi"]
+    assert seen["body"].count('name="timestamp_granularities[]"') == 2
+    assert 'name="language"' in seen["body"] and 'name="file"; filename="a.ogg"' in seen["body"]
+
+
+def _gemini_ok():
+    import json as _json
+
+    body = {"moments": [{"start": 1, "end": 20, "title": "T", "description": "D", "hashtags": ["#a"], "score": 90, "reason": "R"}]}
+    return {"candidates": [{"content": {"parts": [{"text": _json.dumps(body)}]}}]}
+
+
+def test_gemini_falls_back_when_a_model_is_overloaded_or_hangs():
+    import httpx
+
+    from clipforge_worker.ai.base import Segment, Transcript
+    from clipforge_worker.ai.gemini import GeminiHighlights
+
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = request.url.path.split("/models/")[1].split(":")[0]
+        calls.append(model)
+        if model == "busy":
+            return httpx.Response(503, json={"error": {"message": "high demand"}})
+        if model == "gone":
+            return httpx.Response(404, json={"error": {"message": "no longer available"}})
+        if model == "slow":
+            raise httpx.ReadTimeout("timed out", request=request)
+        return httpx.Response(200, json=_gemini_ok())
+
+    g = GeminiHighlights(["busy", "gone", "slow", "good"], api_key="k", client=httpx.Client(transport=httpx.MockTransport(handler)), backoff=(0,))
+    moments = g.find_moments(Transcript([], [Segment("hello", 0, 2)]), [], 60, 1, 15, 30)
+    assert [m.title for m in moments] == ["T"] and moments[0].hashtags == ["a"]
+    assert calls[-1] == "good" and "busy" in calls and "gone" in calls and "slow" in calls
+
+
+def test_gemini_reports_overload_when_every_model_fails():
+    import httpx
+    import pytest as _pytest
+
+    from clipforge_worker.ai.base import Transcript
+    from clipforge_worker.ai.gemini import GeminiHighlights
+
+    client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(503, json={"error": {"message": "high demand"}})))
+    g = GeminiHighlights(["a", "b"], api_key="k", client=client, backoff=(0,))
+    with _pytest.raises(RuntimeError, match="Gemini is busy right now"):
+        g.find_moments(Transcript([], []), [], 60, 1, 15, 30)

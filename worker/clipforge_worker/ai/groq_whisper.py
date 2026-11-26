@@ -52,15 +52,15 @@ class GroqWhisper:
         key = self._key or require("GROQ_API_KEY")
         if audio.stat().st_size > MAX_REQUEST_BYTES:
             raise RuntimeError("Audio chunk is larger than Groq's 25 MB limit")
-        data: list[tuple[str, str]] = [
-            ("model", self.model),
-            ("response_format", "verbose_json"),
-            ("timestamp_granularities[]", "word"),
-            ("timestamp_granularities[]", "segment"),
-            ("temperature", "0"),
-        ]
+        # httpx multipart: form fields as a dict; repeated fields as a list
+        data: dict[str, str | list[str]] = {
+            "model": self.model,
+            "response_format": "verbose_json",
+            "timestamp_granularities[]": ["word", "segment"],
+            "temperature": "0",
+        }
         if language:
-            data.append(("language", language))
+            data["language"] = language
         for attempt in range(4):
             with audio.open("rb") as f:
                 res = self._client.post(

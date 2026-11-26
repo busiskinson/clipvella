@@ -14,6 +14,9 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="print available tools and which keys are set, then exit")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    # the queue is polled every few seconds; don't log every HTTP request
+    for noisy in ("httpx", "httpcore", "hpack"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
     from .media.analysis import capabilities
 
@@ -40,7 +43,7 @@ def main() -> int:
         db=db,
         storage=Storage(db),
         transcriber=GroqWhisper(cfg.whisper_model),
-        highlights=GeminiHighlights(cfg.gemini_model),
+        highlights=GeminiHighlights([cfg.gemini_model, *[m for m in cfg.gemini_fallbacks if m != cfg.gemini_model]]),
         speech=speech_segments if caps["vad"] else None,
         scenes=scene_cuts if caps["scenedetect"] else None,
     )
@@ -50,7 +53,10 @@ def main() -> int:
         "render_clip": lambda job, ctx: clips.run_render_clip(job, ctx, deps),
         "render_export": lambda job, ctx: export.run(job, ctx, deps),
     }
-    run_forever(db, cfg, handlers, caps)
+    try:
+        run_forever(db, cfg, handlers, caps)
+    except KeyboardInterrupt:
+        logging.getLogger("clipforge.worker").info("Worker stopped.")
     return 0
 
 

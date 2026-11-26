@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 
 import httpx
@@ -12,7 +13,9 @@ from .base import RawMoment, Transcript
 
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 MAX_TRANSCRIPT_CHARS = 180_000
-BACKOFF = (2, 4, 8)
+REQUEST_TIMEOUT = 60.0
+
+log = logging.getLogger("clipforge.gemini")
 
 SCHEMA = {
     "type": "OBJECT",
@@ -62,12 +65,23 @@ supports — do not invent facts."""
 
 
 class GeminiHighlights:
+    """Tries each model in order; overloaded (429/5xx), retired (404) or hanging models fall through to the next."""
+
     provider = "gemini"
 
-    def __init__(self, model: str, api_key: str | None = None, client: httpx.Client | None = None):
-        self.model = model
+    def __init__(
+        self,
+        models: str | list[str],
+        api_key: str | None = None,
+        client: httpx.Client | None = None,
+        backoff: tuple[float, ...] = (3,),
+        timeout: float = REQUEST_TIMEOUT,
+    ):
+        self.models = [m for m in ([models] if isinstance(models, str) else models) if m]
+        self.model = self.models[0]
         self._key = api_key
-        self._client = client or httpx.Client(timeout=180)
+        self._client = client or httpx.Client(timeout=timeout)
+        self._backoff = backoff
 
     def find_moments(self, transcript: Transcript, scenes: list[float], duration: float, count: int, min_len: float, max_len: float) -> list[RawMoment]:
         key = self._key or require("GEMINI_API_KEY")
@@ -75,20 +89,31 @@ class GeminiHighlights:
             "contents": [{"role": "user", "parts": [{"text": build_prompt(transcript, scenes, duration, count, min_len, max_len)}]}],
             "generationConfig": {"responseMimeType": "application/json", "responseSchema": SCHEMA, "temperature": 0.4},
         }
-        url = ENDPOINT.format(model=self.model)
-        for attempt in range(len(BACKOFF) + 1):
-            res = self._client.post(url, headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=payload)
-            if res.status_code in (429, 500, 503) and attempt < len(BACKOFF):
-                time.sleep(BACKOFF[attempt])
-                continue
-            if res.status_code in (400, 403) and "API key" in res.text:
-                raise RuntimeError("Gemini rejected the API key. Check GEMINI_API_KEY on the worker.")
-            if res.status_code == 404:
-                raise RuntimeError(f"Gemini model '{self.model}' wasn't found. Set GEMINI_MODEL to a current model name.")
-            if res.status_code >= 400:
-                raise RuntimeError(f"Gemini request failed ({res.status_code}): {res.text[:300]}")
-            return parse_moments(res.json())
-        raise RuntimeError("Gemini is rate-limiting requests. Try again in a few minutes.")
+        tried: list[str] = []
+        for model in self.models:
+            tried.append(model)
+            for attempt in range(len(self._backoff) + 1):
+                try:
+                    res = self._client.post(ENDPOINT.format(model=model), headers={"x-goog-api-key": key, "Content-Type": "application/json"}, json=payload)
+                except httpx.TimeoutException:
+                    log.warning("gemini %s timed out", model)
+                    break  # a hanging model rarely recovers within seconds: move on
+                if res.status_code in (400, 403) and "API key" in res.text:
+                    raise RuntimeError("Gemini rejected the API key. Check GEMINI_API_KEY on the worker.")
+                if res.status_code == 404:
+                    log.warning("gemini model %s unavailable: %s", model, res.text[:120])
+                    break
+                if res.status_code in (429, 500, 502, 503, 504):
+                    log.warning("gemini %s busy (%s)", model, res.status_code)
+                    if attempt < len(self._backoff):
+                        time.sleep(self._backoff[attempt])
+                        continue
+                    break
+                if res.status_code >= 400:
+                    raise RuntimeError(f"Gemini request failed ({res.status_code}): {res.text[:300]}")
+                self.model = model
+                return parse_moments(res.json())
+        raise RuntimeError(f"Gemini is busy right now (tried {', '.join(tried)}). Try again in a few minutes, or set GEMINI_MODEL to another model.")
 
 
 def parse_moments(body: dict) -> list[RawMoment]:

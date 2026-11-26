@@ -34,6 +34,7 @@ class Config:
     worker_id: str
     whisper_model: str
     gemini_model: str
+    gemini_fallbacks: tuple[str, ...]
     poll_seconds: float = 3.0
     heartbeat_seconds: float = 15.0
     requeue_seconds: float = 60.0
@@ -46,6 +47,8 @@ class Config:
             worker_id=optional("WORKER_ID", socket.gethostname()),
             whisper_model=optional("WHISPER_MODEL", "whisper-large-v3-turbo"),
             gemini_model=optional("GEMINI_MODEL", "gemini-flash-latest"),
+            # tried in order when the main model is overloaded, retired or hangs
+            gemini_fallbacks=tuple(m.strip() for m in optional("GEMINI_FALLBACK_MODELS", "gemini-3.6-flash,gemini-flash-lite-latest,gemini-3.5-flash-lite").split(",") if m.strip()),
         )
 
 
