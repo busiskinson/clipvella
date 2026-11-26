@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { HardDrive, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { HardDrive, Loader2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,21 @@ import { Logo } from "./logo";
 import { useUsage } from "@/lib/data/hooks";
 import { STORAGE_LIMIT_BYTES } from "@/lib/data/usage";
 import { formatBytes } from "@/lib/format";
+
+/** Confirms a click right away while the next page loads (fixed size, so nothing shifts). */
+function PendingHint({ collapsed }: { collapsed: boolean }) {
+  const { pending } = useLinkStatus();
+  return (
+    <Loader2
+      aria-hidden
+      className={cn(
+        "relative size-3.5 shrink-0 animate-spin text-lavender transition-opacity duration-150",
+        collapsed ? "absolute right-1 top-1" : "ml-auto",
+        pending ? "opacity-100" : "opacity-0",
+      )}
+    />
+  );
+}
 
 function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -42,6 +57,7 @@ function NavLink({ item, collapsed, onNavigate }: { item: NavItem; collapsed: bo
         className={cn("relative size-[18px] shrink-0 transition-colors", active ? "text-lavender" : "group-hover:text-lavender/80")}
       />
       {!collapsed && <span className="relative truncate">{item.label}</span>}
+      <PendingHint collapsed={collapsed} />
     </Link>
   );
 
